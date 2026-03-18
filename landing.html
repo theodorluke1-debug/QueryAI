@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QueryAI – Ask Your Data, Get Instant Answers</title>
+<meta name="description" content="Ask your Excel data questions in plain language. No SQL, no complexity. Get instant answers and charts.">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #06060a;
+  --s1: #0d0d14;
+  --s2: #13131e;
+  --b1: #1e1e2e;
+  --b2: #2a2a3e;
+  --a: #7c6af7;
+  --a2: #6254e8;
+  --g: #00e5a0;
+  --g2: #00b87a;
+  --t: #f0ecff;
+  --t2: #9490b8;
+  --t3: #4a4868;
+  --warn: #ffb547;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  background: var(--bg);
+  color: var(--t);
+  overflow-x: hidden;
+}
+
+/* NOISE TEXTURE */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 999;
+  opacity: 0.4;
+}
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  padding: 18px 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(6,6,10,0.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(124,106,247,0.1);
+}
+
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+
+.nav-logo-icon {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, var(--a), var(--a2));
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  box-shadow: 0 4px 16px rgba(124,106,247,0.4);
+}
+
+.nav-logo-name {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--t);
+  letter-spacing: -0.3px;
+}
+
+.nav-logo-name span {
+  background: linear-gradient(90deg, var(--a), var(--g));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.nav-cta {
+  background: linear-gradient(135deg, var(--a), var(--a2));
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 20px;
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  box-shadow: 0 4px 16px rgba(124,106,247,0.3);
+  transition: all 0.2s;
+}
+
+.nav-cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(124,106,247,0.5);
+}
+
+/* HERO */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 120px 24px 80px;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -200px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 800px;
+  height: 800px;
+  background: radial-gradient(ellipse, rgba(124,106,247,0.15) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.hero::after {
+  content: '';
+  position: absolute;
+  bottom: -100px;
+  right: -100px;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(ellipse, rgba(0,229,160,0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(124,106,247,0.1);
+  border: 1px solid rgba(124,106,247,0.25);
+  border-radius: 100px;
+  padding: 6px 16px;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: var(--a);
+  margin-bottom: 32px;
+  animation: fadeUp 0.6s ease both;
+}
+
+.hero-badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--g);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+.hero-title {
+  font-size: clamp(42px, 7vw, 86px);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -2px;
+  margin-bottom: 24px;
+  animation: fadeUp 0.6s 0.1s ease both;
+}
+
+.hero-title .line2 {
+  background: linear-gradient(135deg, var(--a) 0%, var(--g) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: block;
+}
+
+.hero-sub {
+  font-size: clamp(16px, 2.5vw, 20px);
+  color: var(--t2);
+  max-width: 560px;
+  line-height: 1.7;
+  margin-bottom: 40px;
+  animation: fadeUp 0.6s 0.2s ease both;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  animation: fadeUp 0.6s 0.3s ease both;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--a), var(--a2));
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 15px 32px;
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  box-shadow: 0 8px 32px rgba(124,106,247,0.4);
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(124,106,247,0.6);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--t2);
+  border: 1px solid var(--b2);
+  border-radius: 12px;
+  padding: 15px 32px;
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+  border-color: var(--a);
+  color: var(--a);
+}
+
+/* DEMO PREVIEW */
+.hero-preview {
+  margin-top: 64px;
+  width: 100%;
+  max-width: 880px;
+  background: var(--s1);
+  border: 1px solid var(--b1);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 40px 120px rgba(0,0,0,0.6), 0 0 0 1px rgba(124,106,247,0.1);
+  animation: fadeUp 0.8s 0.4s ease both;
+}
+
+.preview-bar {
+  padding: 14px 20px;
+  background: var(--s2);
+  border-bottom: 1px solid var(--b1);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.preview-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.preview-url {
+  flex: 1;
+  text-align: center;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--t3);
+}
+
+.preview-body {
+  padding: 28px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.preview-query {
+  background: var(--s2);
+  border: 1px solid var(--b2);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.preview-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--a);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.preview-q {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--t);
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.preview-sql {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--t3);
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 12px;
+  line-height: 1.8;
+}
+
+.preview-sql .kw { color: var(--a); }
+.preview-sql .str { color: var(--warn); }
+.preview-sql .num { color: var(--g); }
+
+.preview-result {
+  background: var(--s2);
+  border: 1px solid var(--b2);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.preview-kpi {
+  text-align: center;
+  padding: 16px 0;
+  margin-bottom: 16px;
+}
+
+.preview-kpi-val {
+  font-size: 48px;
+  font-weight: 800;
+  letter-spacing: -2px;
+  background: linear-gradient(135deg, var(--a), var(--g));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.preview-kpi-lbl {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--t3);
+}
+
+.preview-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 80px;
+  padding: 0 4px;
+}
+
+.preview-bar-item {
+  flex: 1;
+  border-radius: 6px 6px 0 0;
+  transition: all 0.3s;
+}
+
+.preview-bar-labels {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 0 4px;
+}
+
+.preview-bar-label {
+  flex: 1;
+  text-align: center;
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  color: var(--t3);
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* SECTION STYLES */
+section {
+  padding: 100px 24px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.section-tag {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--a);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-tag::before {
+  content: '';
+  display: block;
+  width: 24px;
+  height: 1px;
+  background: var(--a);
+}
+
+.section-title {
+  font-size: clamp(30px, 4vw, 48px);
+  font-weight: 800;
+  letter-spacing: -1.5px;
+  line-height: 1.1;
+  margin-bottom: 16px;
+}
+
+.section-sub {
+  font-size: 17px;
+  color: var(--t2);
+  line-height: 1.7;
+  max-width: 560px;
+}
+
+/* PROBLEM SECTION */
+.problem-section {
+  border-top: 1px solid var(--b1);
+  border-bottom: 1px solid var(--b1);
+  background: linear-gradient(180deg, transparent, rgba(124,106,247,0.03), transparent);
+}
+
+.problem-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-top: 56px;
+}
+
+.problem-card {
+  background: var(--s1);
+  border: 1px solid var(--b1);
+  border-radius: 16px;
+  padding: 28px;
+  position: relative;
+  overflow: hidden;
+}
+
+.problem-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--a), transparent);
+}
+
+.problem-icon {
+  font-size: 28px;
+  margin-bottom: 16px;
+  display: block;
+}
+
+.problem-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: var(--t);
+}
+
+.problem-desc {
+  font-size: 14px;
+  color: var(--t2);
+  line-height: 1.7;
+}
+
+/* HOW IT WORKS */
+.steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 32px;
+  margin-top: 56px;
+  position: relative;
+}
+
+.steps::before {
+  content: '';
+  position: absolute;
+  top: 28px;
+  left: calc(16.666% + 20px);
+  right: calc(16.666% + 20px);
+  height: 1px;
+  background: linear-gradient(90deg, var(--a), var(--g));
+  opacity: 0.3;
+}
+
+.step {
+  text-align: center;
+}
+
+.step-num {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--a), var(--a2));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 800;
+  margin: 0 auto 20px;
+  box-shadow: 0 8px 24px rgba(124,106,247,0.35);
+  position: relative;
+  z-index: 1;
+}
+
+.step-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.step-desc {
+  font-size: 14px;
+  color: var(--t2);
+  line-height: 1.7;
+}
+
+/* USE CASES */
+.usecases {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-top: 56px;
+}
+
+.usecase {
+  background: var(--s1);
+  border: 1px solid var(--b1);
+  border-radius: 16px;
+  overflow: hidden;
+  transition: all 0.2s;
+}
+
+.usecase:hover {
+  border-color: rgba(124,106,247,0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+}
+
+.usecase-head {
+  padding: 20px 24px;
+  background: var(--s2);
+  border-bottom: 1px solid var(--b1);
+}
+
+.usecase-role {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--t3);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  margin-bottom: 8px;
+}
+
+.usecase-q {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--t);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.usecase-q::before {
+  content: '"';
+  color: var(--a);
+  font-size: 24px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.usecase-body {
+  padding: 20px 24px;
+}
+
+.usecase-answer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.usecase-val {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  background: linear-gradient(135deg, var(--a), var(--g));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.usecase-ctx {
+  font-size: 13px;
+  color: var(--t2);
+  line-height: 1.5;
+}
+
+.usecase-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  height: 48px;
+  margin-top: 12px;
+}
+
+.uc-bar {
+  flex: 1;
+  border-radius: 3px 3px 0 0;
+}
+
+/* FEATURES */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-top: 56px;
+}
+
+.feature {
+  background: var(--s1);
+  border: 1px solid var(--b1);
+  border-radius: 16px;
+  padding: 28px;
+  transition: all 0.2s;
+}
+
+.feature:hover {
+  border-color: rgba(124,106,247,0.25);
+  background: var(--s2);
+}
+
+.feature-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(124,106,247,0.12);
+  border: 1px solid rgba(124,106,247,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  margin-bottom: 18px;
+}
+
+.feature-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.feature-desc {
+  font-size: 13px;
+  color: var(--t2);
+  line-height: 1.7;
+}
+
+/* VS SECTION */
+.vs-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 56px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--b1);
+}
+
+.vs-table th {
+  padding: 16px 24px;
+  text-align: left;
+  background: var(--s2);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--t2);
+  font-family: 'DM Mono', monospace;
+  border-bottom: 1px solid var(--b1);
+}
+
+.vs-table th.highlight {
+  color: var(--a);
+  background: rgba(124,106,247,0.08);
+}
+
+.vs-table td {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--b1);
+  font-size: 14px;
+  color: var(--t2);
+}
+
+.vs-table td.feature-name {
+  color: var(--t);
+  font-weight: 600;
+}
+
+.vs-table td.highlight {
+  background: rgba(124,106,247,0.04);
+}
+
+.vs-table tr:last-child td {
+  border-bottom: none;
+}
+
+.check { color: var(--g); font-size: 16px; }
+.cross { color: #ff4f6d; font-size: 16px; }
+.partial { color: var(--warn); font-size: 14px; }
+
+/* CTA SECTION */
+.cta-section {
+  text-align: center;
+  padding: 100px 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.cta-section::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 700px;
+  height: 400px;
+  background: radial-gradient(ellipse, rgba(124,106,247,0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.cta-inner {
+  max-width: 600px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.cta-title {
+  font-size: clamp(32px, 5vw, 56px);
+  font-weight: 800;
+  letter-spacing: -2px;
+  line-height: 1.1;
+  margin-bottom: 20px;
+}
+
+.cta-sub {
+  font-size: 17px;
+  color: var(--t2);
+  line-height: 1.7;
+  margin-bottom: 40px;
+}
+
+.cta-note {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: var(--t3);
+  margin-top: 16px;
+}
+
+/* FOOTER */
+footer {
+  border-top: 1px solid var(--b1);
+  padding: 32px 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.footer-logo {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--t);
+}
+
+.footer-logo span {
+  background: linear-gradient(90deg, var(--a), var(--g));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.footer-note {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: var(--t3);
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  nav { padding: 16px 20px; }
+  .problem-grid, .steps, .features-grid { grid-template-columns: 1fr; }
+  .usecases { grid-template-columns: 1fr; }
+  .preview-body { grid-template-columns: 1fr; }
+  .steps::before { display: none; }
+  footer { padding: 24px 20px; }
+  section { padding: 64px 20px; }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">
+    <div class="nav-logo-icon">✦</div>
+    <div class="nav-logo-name">Query<span>AI</span></div>
+  </a>
+  <a href="https://theodorluke1-debug.github.io/QueryAI/app.html" class="nav-cta">Try for free →</a>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-badge">Free · No signup required · Runs in your browser</div>
+  <h1 class="hero-title">
+    Your Excel data.<br>
+    <span class="line2">Plain answers. Instantly.</span>
+  </h1>
+  <p class="hero-sub">
+    Ask your spreadsheets questions in plain German or English.
+    QueryAI generates SQL, runs it, and shows you the answer as a clear chart — in seconds.
+  </p>
+  <div class="hero-actions">
+    <a href="https://theodorluke1-debug.github.io/QueryAI/app.html" class="btn-primary">
+      Start analyzing free →
+    </a>
+    <a href="#how-it-works" class="btn-secondary">See how it works</a>
+  </div>
+
+  <!-- DEMO PREVIEW -->
+  <div class="hero-preview">
+    <div class="preview-bar">
+      <div class="preview-dot" style="background:#ff5f57"></div>
+      <div class="preview-dot" style="background:#ffbd2e"></div>
+      <div class="preview-dot" style="background:#28c840"></div>
+      <div class="preview-url">theodorluke1-debug.github.io/QueryAI</div>
+    </div>
+    <div class="preview-body">
+      <div class="preview-query">
+        <div class="preview-label">Your question</div>
+        <div class="preview-q">Wie viele Schüler gibt es insgesamt?</div>
+        <div class="preview-label" style="margin-top:16px;">Generated SQL</div>
+        <div class="preview-sql">
+          <span class="kw">SELECT</span> <span class="kw">COUNT</span>(*) <span class="kw">AS</span> total<br>
+          <span class="kw">FROM</span> schueler<br>
+          <span class="kw">WHERE</span> status = <span class="str">'aktiv'</span>
+        </div>
+      </div>
+      <div class="preview-result">
+        <div class="preview-label">Answer</div>
+        <div class="preview-kpi">
+          <div class="preview-kpi-val">1,247</div>
+          <div class="preview-kpi-lbl">Total active students</div>
+        </div>
+        <div class="preview-label">By class</div>
+        <div class="preview-bars">
+          <div class="preview-bar-item" style="height:100%;background:rgba(124,106,247,0.8);border-radius:4px 4px 0 0;"></div>
+          <div class="preview-bar-item" style="height:78%;background:rgba(0,229,160,0.8);border-radius:4px 4px 0 0;"></div>
+          <div class="preview-bar-item" style="height:62%;background:rgba(255,126,179,0.8);border-radius:4px 4px 0 0;"></div>
+          <div class="preview-bar-item" style="height:85%;background:rgba(255,181,71,0.8);border-radius:4px 4px 0 0;"></div>
+          <div class="preview-bar-item" style="height:45%;background:rgba(56,189,248,0.8);border-radius:4px 4px 0 0;"></div>
+        </div>
+        <div class="preview-bar-labels">
+          <div class="preview-bar-label">5A</div>
+          <div class="preview-bar-label">5B</div>
+          <div class="preview-bar-label">6A</div>
+          <div class="preview-bar-label">6B</div>
+          <div class="preview-bar-label">7A</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PROBLEM -->
+<section class="problem-section" style="max-width:100%;padding:80px 24px;">
+  <div style="max-width:1100px;margin:0 auto;">
+    <div class="section-tag">The problem</div>
+    <h2 class="section-title">Your data is there.<br>The answers aren't.</h2>
+    <p class="section-sub">Most people have data but can't use it — because getting answers requires skills most people don't have.</p>
+    <div class="problem-grid">
+      <div class="problem-card">
+        <span class="problem-icon">📊</span>
+        <div class="problem-title">Excel is overwhelming</div>
+        <div class="problem-desc">Pivot tables, VLOOKUP, complex formulas — getting a simple answer takes hours of work you don't have time for.</div>
+      </div>
+      <div class="problem-card" style="--accent:var(--warn);">
+        <span class="problem-icon">🗄️</span>
+        <div class="problem-title">SQL is a barrier</div>
+        <div class="problem-desc">Databases are powerful but require technical knowledge. Most business users can't write a single SQL query.</div>
+      </div>
+      <div class="problem-card">
+        <span class="problem-icon">💸</span>
+        <div class="problem-title">BI tools are expensive</div>
+        <div class="problem-desc">Enterprise tools like Tableau or Power BI cost thousands per year and take weeks to set up properly.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how-it-works">
+  <div class="section-tag">How it works</div>
+  <h2 class="section-title">Three steps.<br>That's all.</h2>
+  <p class="section-sub">No setup, no training, no technical knowledge needed. Just upload and ask.</p>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-title">Upload your file</div>
+      <div class="step-desc">Drag and drop your CSV or Excel file. Or type your data directly into the built-in spreadsheet editor.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-title">Ask a question</div>
+      <div class="step-desc">Type your question in plain German or English. No SQL, no formulas, no technical jargon required.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-title">Get your answer</div>
+      <div class="step-desc">QueryAI generates the SQL, runs it instantly, and shows you the result as a clear chart or number.</div>
+    </div>
+  </div>
+</section>
+
+<!-- USE CASES -->
+<section style="border-top:1px solid var(--b1);max-width:100%;padding:100px 24px;background:linear-gradient(180deg,transparent,rgba(124,106,247,0.02),transparent);">
+  <div style="max-width:1100px;margin:0 auto;">
+    <div class="section-tag">Real examples</div>
+    <h2 class="section-title">Questions people actually ask.</h2>
+    <p class="section-sub">See how QueryAI turns everyday questions into instant, clear answers.</p>
+    <div class="usecases">
+      <div class="usecase">
+        <div class="usecase-head">
+          <div class="usecase-role">Small business owner</div>
+          <div class="usecase-q">Which product generates the most revenue this month?</div>
+        </div>
+        <div class="usecase-body">
+          <div class="usecase-answer">
+            <div class="usecase-val">42%</div>
+            <div class="usecase-ctx">Product A leads with €18,400 — significantly ahead of Product B at €12,200.</div>
+          </div>
+          <div class="usecase-chart">
+            <div class="uc-bar" style="height:100%;background:rgba(124,106,247,0.8);border-radius:3px 3px 0 0;"></div>
+            <div class="uc-bar" style="height:66%;background:rgba(0,229,160,0.8);border-radius:3px 3px 0 0;"></div>
+            <div class="uc-bar" style="height:42%;background:rgba(255,126,179,0.8);border-radius:3px 3px 0 0;"></div>
+            <div class="uc-bar" style="height:28%;background:rgba(255,181,71,0.8);border-radius:3px 3px 0 0;"></div>
+          </div>
+        </div>
+      </div>
+      <div class="usecase">
+        <div class="usecase-head">
+          <div class="usecase-role">School administrator</div>
+          <div class="usecase-q">Wie ist das Verhältnis von Schülern zu Lehrern?</div>
+        </div>
+        <div class="usecase-body">
+          <div class="usecase-answer">
+            <div class="usecase-val">24:1</div>
+            <div class="usecase-ctx">1,247 students across 52 teachers. Classes average 24 students each.</div>
+          </div>
+          <div class="usecase-chart">
+            <div class="uc-bar" style="height:80%;background:rgba(124,106,247,0.8);border-radius:3px 3px 0 0;"></div>
+            <div class="uc-bar" style="height:100%;background:rgba(0,229,160,0.8);border-radius:3px 3px 0 0;"></div>
+            <div class="uc-bar" style="height:65%;background:rgba(255,126,179,0.8);border-radius:3px 3px 0 0;"></div>
+            <div class="uc-bar" style="height:90%;background:rgba(255,181,71,0.8);border-radius:3px 3px 0 0;"></div>
+          </div>
+        </div>
+      </div>
+      <div class="usecase">
+        <div class="usecase-head">
+          <div class="usecase-role">Sales manager</div>
+          <div class="usecase-q">Which region had the highest growth last quarter?</div>
+        </div>
+        <div class="usecase-body">
+          <div class="usecase-answer">
+            <div class="usecase-val">+31%</div>
+            <div class="usecase-ctx">South region grew 31% quarter-over-quarter — outperforming North (+12%) and East (+8%).</div>
+          </div>
+          <div class="usecase-chart">
+            <div class="uc-bar" style="height:40%;background:rgba(124,106,247,0.8);border-radius:3px 3px 0 0;"></div>
+            <div class="uc-bar" style="height:100%;background:rgba(0,229,160,0.8);border-radius:3px 3px 0 0;"></div>
+            <div class="uc-bar" style="height:26%;background:rgba(255,126,179,0.8);border-radius:3px 3px 0 0;"></div>
+          </div>
+        </div>
+      </div>
+      <div class="usecase">
+        <div class="usecase-head">
+          <div class="usecase-role">Office manager</div>
+          <div class="usecase-q">Wie viele Bestellungen hatten wir pro Monat?</div>
+        </div>
+        <div class="usecase-body">
+          <div class="usecase-answer">
+            <div class="usecase-val">847</div>
+            <div class="usecase-ctx">Monthly average across the year. Peak in December with 1,240 orders.</div>
+          </div>
+          <div class="usecase-chart">
+            <div class="uc-bar" style="height:50%;background:rgba(124,106,247,0.8);border-radius:3px 3px 0 0;"></div>
+            <div class="uc-bar" style="height:60%;background:rgba(0,229,160,0.8);border-radius:3px 3px 0 0;"></div>
+            <div class="uc-bar" style="height:70%;background:rgba(255,126,179,0.8);border-radius:3px 3px 0 0;"></div>
+            <div class="uc-bar" style="height:55%;background:rgba(255,181,71,0.8);border-radius:3px 3px 0 0;"></div>
+            <div class="uc-bar" style="height:80%;background:rgba(56,189,248,0.8);border-radius:3px 3px 0 0;"></div>
+            <div class="uc-bar" style="height:100%;background:rgba(167,139,250,0.8);border-radius:3px 3px 0 0;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section>
+  <div class="section-tag">Features</div>
+  <h2 class="section-title">Everything you need.<br>Nothing you don't.</h2>
+  <p class="section-sub">Built for people who want answers, not complexity.</p>
+  <div class="features-grid">
+    <div class="feature">
+      <div class="feature-icon">📥</div>
+      <div class="feature-title">CSV & Excel import</div>
+      <div class="feature-desc">Drag and drop your files. Supports .csv, .xlsx, .xls and .ods. Multi-sheet Excel files supported.</div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🧠</div>
+      <div class="feature-title">AI-powered SQL</div>
+      <div class="feature-desc">Powered by Google Gemini. Understands complex questions including ratios, trends, and comparisons.</div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">📊</div>
+      <div class="feature-title">Automatic charts</div>
+      <div class="feature-desc">Bar, line, pie charts and KPI cards — chosen automatically based on your question and data.</div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🗄️</div>
+      <div class="feature-title">Supabase integration</div>
+      <div class="feature-desc">Connect your Supabase database directly. Query live data with the same plain-language interface.</div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🔒</div>
+      <div class="feature-title">Your data stays local</div>
+      <div class="feature-desc">Everything runs in your browser. Your data never leaves your device — only the question is sent to the AI.</div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">⚡</div>
+      <div class="feature-title">No install needed</div>
+      <div class="feature-desc">Open the link, start analyzing. No sign-up, no download, no backend. Works on any modern browser.</div>
+    </div>
+  </div>
+</section>
+
+<!-- VS TABLE -->
+<section style="border-top:1px solid var(--b1);max-width:100%;padding:100px 24px;">
+  <div style="max-width:1100px;margin:0 auto;">
+    <div class="section-tag">Comparison</div>
+    <h2 class="section-title">Why QueryAI?</h2>
+    <p class="section-sub">See how QueryAI compares to the tools you're already using.</p>
+    <table class="vs-table">
+      <thead>
+        <tr>
+          <th>Feature</th>
+          <th class="highlight">QueryAI</th>
+          <th>Excel</th>
+          <th>BI Tools</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="feature-name">No technical knowledge needed</td>
+          <td class="highlight"><span class="check">✓</span></td>
+          <td><span class="cross">✗</span></td>
+          <td><span class="cross">✗</span></td>
+        </tr>
+        <tr>
+          <td class="feature-name">Plain language questions</td>
+          <td class="highlight"><span class="check">✓</span></td>
+          <td><span class="cross">✗</span></td>
+          <td><span class="cross">✗</span></td>
+        </tr>
+        <tr>
+          <td class="feature-name">Automatic chart generation</td>
+          <td class="highlight"><span class="check">✓</span></td>
+          <td><span class="partial">Manual</span></td>
+          <td><span class="check">✓</span></td>
+        </tr>
+        <tr>
+          <td class="feature-name">Free to use</td>
+          <td class="highlight"><span class="check">✓</span></td>
+          <td><span class="cross">✗</span></td>
+          <td><span class="cross">✗</span></td>
+        </tr>
+        <tr>
+          <td class="feature-name">No setup required</td>
+          <td class="highlight"><span class="check">✓</span></td>
+          <td><span class="partial">Partial</span></td>
+          <td><span class="cross">✗</span></td>
+        </tr>
+        <tr>
+          <td class="feature-name">Supports German language</td>
+          <td class="highlight"><span class="check">✓</span></td>
+          <td><span class="partial">Partial</span></td>
+          <td><span class="cross">✗</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- CTA -->
+<div class="cta-section">
+  <div class="cta-inner">
+    <h2 class="cta-title">Ready to understand your data?</h2>
+    <p class="cta-sub">Join people who stopped struggling with Excel and started getting answers in seconds.</p>
+    <a href="https://theodorluke1-debug.github.io/QueryAI/app.html" class="btn-primary" style="font-size:17px;padding:17px 40px;">
+      Start for free →
+    </a>
+    <div class="cta-note">Free · No signup · No credit card</div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">Query<span>AI</span></div>
+  <div class="footer-note">© 2026 QueryAI · Built with Gemini API · Runs 100% in your browser</div>
+</footer>
+
+</body>
+</html>
