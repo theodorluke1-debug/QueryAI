@@ -35,4 +35,4 @@ QueryAI lets you analyze your data by asking questions in natural language. No S
 
 ## Built by
 
-A 15-year-old developer in 2 days.
+A 15-year-old developer.
