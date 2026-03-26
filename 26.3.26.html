@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QueryAI — Ask Your Data Anything</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,600;1,300;1,600&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#07080a;
+  --s1:#0f1014;
+  --s2:#16171d;
+  --border:#1e2028;
+  --border2:#2a2c38;
+  --accent:#c6f135;
+  --text:#eeeef2;
+  --muted:#6b6c7e;
+  --dim:#2e2f3a;
+  --green:#36f49a;
+  --red:#ff4d6d;
+  --mono:'Geist Mono',monospace;
+  --serif:'Fraunces',serif;
+  --sans:'Geist',sans-serif;
+  --max:1040px;
+}
+
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);overflow-x:hidden;line-height:1.6}
+
+/* ── UTILS ── */
+.wrap{max-width:var(--max);margin:0 auto;padding:0 24px}
+.section{padding:100px 0}
+.section-tag{font-family:var(--mono);font-size:11px;letter-spacing:1.8px;text-transform:uppercase;color:var(--accent);margin-bottom:16px}
+.section-title{font-family:var(--serif);font-size:clamp(30px,4.5vw,50px);font-weight:300;letter-spacing:-1.5px;line-height:1.1;margin-bottom:16px}
+.section-title em{font-style:italic;color:var(--accent)}
+.section-sub{font-size:16px;color:var(--muted);max-width:500px;line-height:1.6}
+.divider{border:none;border-top:1px solid var(--border);margin:0}
+
+/* ── NAV ── */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:50;
+  height:58px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 32px;
+  background:rgba(7,8,10,0.88);backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+}
+.logo{font-family:var(--serif);font-size:19px;font-weight:600;letter-spacing:-0.3px}
+.logo em{font-style:italic;color:var(--accent)}
+.nav-btn{
+  background:var(--accent);color:#07080a;
+  padding:8px 20px;border-radius:7px;
+  font-size:13px;font-weight:500;text-decoration:none;transition:opacity .15s;
+}
+.nav-btn:hover{opacity:.85}
+
+/* ── HERO ── */
+.hero{
+  min-height:100vh;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:120px 24px 80px;text-align:center;position:relative;overflow:hidden;
+}
+.hero-glow{
+  position:absolute;inset:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 0%,rgba(198,241,53,.11) 0%,transparent 60%),
+    radial-gradient(ellipse 40% 35% at 85% 85%,rgba(54,244,154,.06) 0%,transparent 50%);
+}
+.pill{
+  display:inline-flex;align-items:center;gap:7px;
+  background:var(--s2);border:1px solid var(--border2);
+  border-radius:100px;padding:5px 14px;font-size:11.5px;color:var(--muted);
+  margin-bottom:32px;font-family:var(--mono);letter-spacing:.3px;
+  animation:fadeUp .5s ease both;position:relative;z-index:1;
+}
+.pill-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+
+.hero h1{
+  font-family:var(--serif);font-size:clamp(50px,8.5vw,100px);
+  font-weight:300;line-height:1.0;letter-spacing:-3.5px;
+  max-width:860px;margin-bottom:26px;
+  animation:fadeUp .5s .1s ease both;position:relative;z-index:1;
+}
+.hero h1 em{font-style:italic;color:var(--accent)}
+.hero h1 strong{font-weight:600}
+
+.hero-sub{
+  font-size:clamp(15px,2vw,18px);color:var(--muted);
+  max-width:480px;line-height:1.6;margin-bottom:40px;
+  animation:fadeUp .5s .2s ease both;position:relative;z-index:1;
+}
+.cta-row{
+  display:flex;gap:10px;justify-content:center;flex-wrap:wrap;
+  animation:fadeUp .5s .3s ease both;position:relative;z-index:1;
+}
+.btn-primary{
+  background:var(--accent);color:#07080a;padding:14px 28px;border-radius:8px;
+  font-size:15px;font-weight:500;text-decoration:none;
+  transition:all .2s;display:inline-flex;align-items:center;gap:8px;
+}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 10px 28px rgba(198,241,53,.22)}
+.btn-ghost{
+  background:transparent;color:var(--text);padding:14px 28px;border-radius:8px;
+  font-size:15px;border:1px solid var(--border2);text-decoration:none;
+  transition:all .2s;display:inline-flex;align-items:center;gap:8px;
+}
+.btn-ghost:hover{background:var(--s2);border-color:var(--muted)}
+
+.proof-row{
+  display:flex;gap:20px;align-items:center;margin-top:48px;
+  font-size:12px;color:var(--muted);flex-wrap:wrap;justify-content:center;
+  animation:fadeUp .5s .4s ease both;position:relative;z-index:1;
+}
+.proof-sep{width:1px;height:14px;background:var(--border2)}
+
+/* ── DEMO PREVIEW ── */
+.demo-section{padding:0 0 100px}
+.demo-label{
+  font-family:var(--mono);font-size:11px;letter-spacing:1.8px;
+  text-transform:uppercase;color:var(--accent);text-align:center;margin-bottom:20px;
+}
+.demo-shell{
+  background:var(--s1);border:1px solid var(--border);border-radius:14px;overflow:hidden;
+  box-shadow:0 40px 80px rgba(0,0,0,.55);
+}
+.demo-bar{
+  background:var(--s2);border-bottom:1px solid var(--border);
+  padding:11px 18px;display:flex;align-items:center;gap:8px;
+}
+.dots{display:flex;gap:6px}
+.dot{width:10px;height:10px;border-radius:50%}
+.dr{background:#ff5f57}.dy{background:#febc2e}.dg{background:#28c840}
+.bar-title{font-family:var(--mono);font-size:12px;color:var(--muted);margin-left:6px}
+.demo-inner{display:grid;grid-template-columns:1fr 1fr}
+.demo-left{padding:24px;border-right:1px solid var(--border)}
+.demo-right{padding:24px}
+.demo-col-title{font-family:var(--mono);font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--dim);margin-bottom:12px}
+.fake-input{
+  background:var(--bg);border:1px solid var(--border2);border-radius:8px;
+  padding:12px 14px;font-size:13px;color:var(--muted);font-family:var(--mono);
+  margin-bottom:10px;line-height:1.5;
+}
+.fake-input span{color:var(--text)}
+.fake-chips{display:flex;gap:6px;flex-wrap:wrap}
+.fake-chip{background:var(--s2);border:1px solid var(--border);border-radius:100px;padding:4px 11px;font-size:11.5px;color:var(--muted)}
+.fake-table{width:100%;border-collapse:collapse;font-size:12.5px}
+.fake-table th{
+  text-align:left;padding:8px 12px;font-family:var(--mono);font-size:10px;
+  letter-spacing:.8px;text-transform:uppercase;color:var(--dim);
+  border-bottom:1px solid var(--border);font-weight:400;
+}
+.fake-table td{padding:8px 12px;border-bottom:1px solid rgba(30,32,40,.5);color:var(--muted)}
+.fake-table tr:last-child td{border:none}
+.td-val{color:var(--accent);font-family:var(--mono)}
+.td-name{color:var(--text)}
+.insight-strip{
+  margin-top:14px;
+  background:linear-gradient(135deg,rgba(198,241,53,.07),rgba(54,244,154,.04));
+  border:1px solid rgba(198,241,53,.15);border-radius:8px;padding:12px 14px;
+  display:flex;gap:10px;align-items:flex-start;
+}
+.insight-icon{font-size:14px;margin-top:1px;flex-shrink:0}
+.insight-body{font-size:12px;color:var(--muted);line-height:1.5}
+.insight-body strong{color:var(--text)}
+
+/* ── FOR WHO ── */
+.forwho-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:48px}
+.forwho-card{
+  background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:28px;
+  transition:border-color .2s;
+}
+.forwho-card:hover{border-color:var(--border2)}
+.forwho-icon{font-size:22px;margin-bottom:16px}
+.forwho-role{font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.forwho-quote{
+  font-family:var(--serif);font-size:15px;font-style:italic;font-weight:300;
+  color:var(--muted);line-height:1.5;margin-bottom:14px;
+  border-left:2px solid var(--border2);padding-left:14px;
+}
+.forwho-answer{font-size:13px;color:var(--muted);line-height:1.6}
+.forwho-answer strong{color:var(--text)}
+
+/* ── HOW IT WORKS ── */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:48px;position:relative}
+.steps::before{
+  content:'';position:absolute;top:28px;left:calc(16.66% + 14px);right:calc(16.66% + 14px);
+  height:1px;background:var(--border2);z-index:0;
+}
+.step-card{
+  background:var(--s1);border:1px solid var(--border);border-radius:12px;
+  padding:28px;position:relative;z-index:1;
+}
+.step-num{
+  width:32px;height:32px;border-radius:50%;
+  background:var(--accent);color:#07080a;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:12px;font-weight:500;
+  margin-bottom:18px;
+}
+.step-card h3{font-size:15px;font-weight:500;margin-bottom:8px;letter-spacing:-.2px}
+.step-card p{font-size:13px;color:var(--muted);line-height:1.6}
+
+.privacy-note{
+  margin-top:20px;background:rgba(54,244,154,.06);border:1px solid rgba(54,244,154,.15);
+  border-radius:10px;padding:16px 20px;
+  display:flex;align-items:center;gap:12px;font-size:13px;color:var(--muted);
+}
+.privacy-note-icon{font-size:16px;flex-shrink:0}
+.privacy-note strong{color:var(--text)}
+
+/* ── FEATURES GRID ── */
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:48px}
+.feat-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:28px;transition:border-color .2s}
+.feat-card:hover{border-color:var(--border2)}
+.feat-num{font-family:var(--mono);font-size:11px;color:var(--dim);margin-bottom:16px}
+.feat-emoji{font-size:22px;margin-bottom:14px}
+.feat-card h3{font-size:15px;font-weight:500;margin-bottom:8px;letter-spacing:-.2px}
+.feat-card p{font-size:13px;color:var(--muted);line-height:1.6}
+
+/* ── EXAMPLES ── */
+.examples-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:48px}
+.example-card{
+  background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:28px;
+  display:flex;flex-direction:column;gap:12px;
+}
+.example-tag{
+  font-family:var(--mono);font-size:10px;letter-spacing:.8px;text-transform:uppercase;
+  color:var(--muted);display:flex;align-items:center;gap:8px;
+}
+.example-tag::after{content:'';flex:1;height:1px;background:var(--border)}
+.example-q{font-size:14px;color:var(--text);font-style:italic;font-family:var(--serif);font-weight:300;letter-spacing:-.2px}
+.example-result{
+  background:var(--s2);border:1px solid var(--border);border-radius:8px;
+  padding:14px 16px;display:flex;align-items:center;gap:16px;
+}
+.example-num{font-family:var(--serif);font-size:32px;font-weight:600;color:var(--accent);letter-spacing:-1px;flex-shrink:0}
+.example-desc{font-size:12px;color:var(--muted);line-height:1.5}
+.example-desc strong{color:var(--text)}
+
+/* ── COMPARISON TABLE ── */
+.compare-wrap{margin-top:48px;border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.compare-table{width:100%;border-collapse:collapse;font-size:14px}
+.compare-table th{
+  padding:14px 20px;text-align:left;background:var(--s2);
+  border-bottom:1px solid var(--border);font-size:12px;font-weight:500;
+  color:var(--muted);letter-spacing:.2px;
+}
+.compare-table th.hl{color:var(--accent)}
+.compare-table td{padding:13px 20px;border-bottom:1px solid var(--border);color:var(--muted);vertical-align:middle}
+.compare-table tr:last-child td{border-bottom:none}
+.compare-table td.hl{background:rgba(198,241,53,.03);color:var(--text);font-weight:500}
+.chk{color:var(--green)}
+.crs{color:var(--red)}
+.prt{color:#f59e0b}
+
+/* ── PRIVACY ── */
+.privacy-card{
+  background:var(--s1);border:1px solid var(--border);border-radius:14px;
+  padding:44px;display:flex;gap:48px;align-items:center;flex-wrap:wrap;
+  margin-top:48px;
+}
+.priv-left{flex:1;min-width:220px}
+.priv-badge{
+  display:inline-flex;align-items:center;gap:7px;
+  background:rgba(54,244,154,.08);border:1px solid rgba(54,244,154,.15);
+  border-radius:100px;padding:4px 12px;font-size:11px;font-family:var(--mono);
+  color:var(--green);margin-bottom:16px;
+}
+.priv-left h3{font-family:var(--serif);font-size:26px;font-weight:300;letter-spacing:-.5px;margin-bottom:10px}
+.priv-left p{font-size:13px;color:var(--muted);line-height:1.6}
+.priv-right{display:flex;flex-direction:column;gap:10px;min-width:240px}
+.priv-item{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:var(--muted)}
+.priv-chk{color:var(--green);margin-top:1px;flex-shrink:0}
+
+/* ── ABOUT ── */
+.about-card{
+  background:var(--s1);border:1px solid var(--border);border-radius:14px;
+  padding:44px;margin-top:48px;position:relative;overflow:hidden;
+}
+.about-card::before{
+  content:'';position:absolute;top:0;right:0;width:280px;height:280px;
+  background:radial-gradient(ellipse at top right,rgba(198,241,53,.06),transparent 65%);
+  pointer-events:none;
+}
+.about-top{display:flex;align-items:flex-start;gap:18px;margin-bottom:22px}
+.about-avatar{
+  width:50px;height:50px;border-radius:50%;flex-shrink:0;
+  background:linear-gradient(135deg,#1a1d26,#2a2c38);border:1px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--serif);font-size:20px;font-style:italic;color:var(--accent);
+}
+.about-name{font-size:15px;font-weight:500;margin-bottom:3px}
+.about-role{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.about-body{font-size:14px;color:var(--muted);line-height:1.75}
+.about-body p+p{margin-top:12px}
+.about-body strong{color:var(--text);font-weight:500}
+.about-quote{
+  margin-top:22px;padding-top:22px;border-top:1px solid var(--border);
+  font-family:var(--serif);font-size:19px;font-weight:300;font-style:italic;
+  color:var(--text);letter-spacing:-.3px;line-height:1.4;
+}
+.about-quote em{color:var(--accent)}
+
+/* ── FINAL CTA ── */
+.final-cta{text-align:center;padding:100px 24px 120px;border-top:1px solid var(--border)}
+.final-cta h2{font-family:var(--serif);font-size:clamp(36px,6vw,72px);font-weight:300;letter-spacing:-2px;margin-bottom:22px}
+.final-cta h2 em{font-style:italic;color:var(--accent)}
+.final-cta p{color:var(--muted);font-size:16px;margin-bottom:36px}
+.final-proof{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-top:20px;font-size:12px;color:var(--muted)}
+
+/* ── FOOTER ── */
+footer{
+  border-top:1px solid var(--border);padding:28px 32px;
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:13px;color:var(--muted);flex-wrap:wrap;gap:12px;
+}
+footer a{color:var(--muted);text-decoration:none;transition:color .15s}
+footer a:hover{color:var(--text)}
+.footer-links{display:flex;gap:20px}
+
+/* ── RESPONSIVE ── */
+@media(max-width:800px){
+  .demo-inner,.forwho-grid,.steps,.feat-grid,.examples-grid{grid-template-columns:1fr}
+  .demo-left{border-right:none;border-bottom:1px solid var(--border)}
+  .steps::before{display:none}
+  .privacy-card{flex-direction:column;gap:28px}
+  nav{padding:0 16px}
+  .proof-sep{display:none}
+  .about-card,.privacy-card{padding:28px}
+  .section{padding:72px 0}
+}
+@media(max-width:600px){
+  .compare-table{font-size:12px}
+  .compare-table th,.compare-table td{padding:10px 12px}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="logo">Query<em>AI</em></div>
+  <a href="app.html" class="nav-btn">Open App →</a>
+</nav>
+
+<!-- ── HERO ── -->
+<section class="hero">
+  <div class="hero-glow"></div>
+  <div class="pill"><div class="pill-dot"></div>Runs entirely in your browser</div>
+  <h1>Ask your data.<br><em>Answers</em> in<br><strong>seconds.</strong></h1>
+  <p class="hero-sub">Upload a CSV or Excel file and ask questions in plain English — no SQL, no cloud, no waiting.</p>
+  <div class="cta-row">
+    <a href="app.html" class="btn-primary">▶ Try it free — no signup</a>
+    <a href="#demo" class="btn-ghost">See a demo</a>
+  </div>
+  <div class="proof-row">
+    <span>3 queries free</span>
+    <div class="proof-sep"></div>
+    <span>No registration</span>
+    <div class="proof-sep"></div>
+    <span>Your data never leaves your device</span>
+  </div>
+</section>
+
+<!-- ── DEMO PREVIEW ── -->
+<div class="wrap demo-section" id="demo">
+  <div class="demo-label">// Live preview</div>
+  <div class="demo-shell">
+    <div class="demo-bar">
+      <div class="dots"><div class="dot dr"></div><div class="dot dy"></div><div class="dot dg"></div></div>
+      <div class="bar-title">QueryAI — sales_2024.csv</div>
+    </div>
+    <div class="demo-inner">
+      <div class="demo-left">
+        <div class="demo-col-title">// Your question</div>
+        <div class="fake-input"><span>Top 5 products by revenue in Q3</span></div>
+        <div class="fake-chips">
+          <div class="fake-chip">📊 By region</div>
+          <div class="fake-chip">📅 By month</div>
+          <div class="fake-chip">⚠️ Weak products</div>
+        </div>
+      </div>
+      <div class="demo-right">
+        <div class="demo-col-title">// Result — 480ms</div>
+        <table class="fake-table">
+          <thead><tr><th>Product</th><th>Revenue</th></tr></thead>
+          <tbody>
+            <tr><td class="td-name">Laptop Pro 15</td><td class="td-val">$94,437</td></tr>
+            <tr><td class="td-name">Monitor 4K</td><td class="td-val">$46,722</td></tr>
+            <tr><td class="td-name">Webcam HD</td><td class="td-val">$30,450</td></tr>
+            <tr><td class="td-name">Laptop Air</td><td class="td-val">$23,400</td></tr>
+            <tr><td class="td-name">Keyboard Pro</td><td class="td-val">$14,100</td></tr>
+          </tbody>
+        </table>
+        <div class="insight-strip">
+          <div class="insight-icon">✦</div>
+          <div class="insight-body"><strong>AI Insight:</strong> Laptop Pro 15 drives 38% of revenue — but at only 22% margin. USB-C Hub has 51% margin at a fraction of the volume.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ── FOR WHO ── -->
+<section class="section">
+  <div class="wrap">
+    <div class="section-tag">// Who it's for</div>
+    <h2 class="section-title">Built for people<br>who work with data<br><em>but aren't data people.</em></h2>
+    <p class="section-sub">No SQL. No pivot tables. No 2-hour formula sessions. Just ask your question.</p>
+    <div class="forwho-grid">
+      <div class="forwho-card">
+        <div class="forwho-icon">🏪</div>
+        <div class="forwho-role">Small business owner</div>
+        <div class="forwho-quote">"I want to analyze my sales data but I'm scared to upload it to ChatGPT. What if it gets stored?"</div>
+        <div class="forwho-answer">With QueryAI, your file <strong>never leaves your browser</strong>. Ask "Which product had the highest margin?" — get the answer, zero risk.</div>
+      </div>
+      <div class="forwho-card">
+        <div class="forwho-icon">📋</div>
+        <div class="forwho-role">Office manager</div>
+        <div class="forwho-quote">"I've been stuck in a pivot table for 2 hours just trying to see which region sold the most in March."</div>
+        <div class="forwho-answer">Ask QueryAI: <strong>"Which region had the most sales in March?"</strong> — answer in seconds, no formulas, no frustration.</div>
+      </div>
+      <div class="forwho-card">
+        <div class="forwho-icon">🎓</div>
+        <div class="forwho-role">Teacher / School admin</div>
+        <div class="forwho-quote">"Student data is sensitive. I can't just throw it into some AI tool and hope for the best."</div>
+        <div class="forwho-answer">QueryAI runs <strong>100% locally in your browser</strong>. No server, no cloud, no compliance risk.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ── HOW IT WORKS ── -->
+<section class="section" id="how-it-works">
+  <div class="wrap">
+    <div class="section-tag">// How it works</div>
+    <h2 class="section-title">Three steps.<br><em>Under 60 seconds.</em></h2>
+    <p class="section-sub">No setup, no account, no installation. Works in any browser.</p>
+    <div class="steps">
+      <div class="step-card">
+        <div class="step-num">1</div>
+        <h3>Drop your file</h3>
+        <p>Upload a CSV or Excel file. It loads directly into your browser memory using SQL.js — a real SQLite engine. Nothing is uploaded anywhere.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-num">2</div>
+        <h3>Ask in plain English</h3>
+        <p>Type your question. Only the question — not your data — is sent to Gemini to generate SQL. Your spreadsheet stays on your device.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-num">3</div>
+        <h3>Get your answer</h3>
+        <p>The SQL runs locally in your browser. Results appear instantly with an AI insight explaining what they mean.</p>
+      </div>
+    </div>
+    <div class="privacy-note">
+      <div class="privacy-note-icon">🔒</div>
+      <div><strong>Privacy verified:</strong> Your file stays in RAM, not on a server. Open DevTools → Network while running a query — you won't see your data leave.</div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ── FEATURES ── -->
+<section class="section">
+  <div class="wrap">
+    <div class="section-tag">// Features</div>
+    <h2 class="section-title">Everything you need.<br><em>Nothing you don't.</em></h2>
+    <div class="feat-grid">
+      <div class="feat-card">
+        <div class="feat-num">01</div>
+        <div class="feat-emoji">💬</div>
+        <h3>Plain English questions</h3>
+        <p>No SQL required. Just write what you want to know — QueryAI translates it into a precise database query.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-num">02</div>
+        <div class="feat-emoji">✦</div>
+        <h3>Automatic AI insights</h3>
+        <p>After every query, the AI surfaces what actually matters — patterns, outliers, and concrete recommendations.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-num">03</div>
+        <div class="feat-emoji">⚡</div>
+        <h3>Results in &lt; 1 second</h3>
+        <p>SQL.js runs directly in your browser. No server roundtrip. Your 50,000-row CSV is searched in milliseconds.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-num">04</div>
+        <div class="feat-emoji">⬇</div>
+        <h3>Export & share</h3>
+        <p>Export results as CSV, copy the SQL query, or share a direct link to your analysis — all without an account.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-num">05</div>
+        <div class="feat-emoji">📁</div>
+        <h3>CSV & Excel support</h3>
+        <p>Drag & drop .csv and .xlsx files. Load multiple files at once and query across them.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-num">06</div>
+        <div class="feat-emoji">🔒</div>
+        <h3>100% local</h3>
+        <p>Your data never leaves your browser. No uploads, no backend, no tracking. Works fully offline.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ── REAL EXAMPLES ── -->
+<section class="section">
+  <div class="wrap">
+    <div class="section-tag">// Real examples</div>
+    <h2 class="section-title">Questions people<br><em>actually ask.</em></h2>
+    <p class="section-sub">Real use cases across different industries.</p>
+    <div class="examples-grid">
+      <div class="example-card">
+        <div class="example-tag">Small business · Sales data</div>
+        <div class="example-q">"Which product generates the most revenue this month?"</div>
+        <div class="example-result">
+          <div class="example-num">42%</div>
+          <div class="example-desc"><strong>Product A leads with $18,400</strong> — significantly ahead of Product B at $12,200.</div>
+        </div>
+      </div>
+      <div class="example-card">
+        <div class="example-tag">School admin · Attendance data</div>
+        <div class="example-q">"What is the average student-to-teacher ratio?"</div>
+        <div class="example-result">
+          <div class="example-num">24:1</div>
+          <div class="example-desc"><strong>1,247 students across 52 teachers.</strong> Classes average 24 students each.</div>
+        </div>
+      </div>
+      <div class="example-card">
+        <div class="example-tag">Sales manager · Quarterly data</div>
+        <div class="example-q">"Which region had the highest growth last quarter?"</div>
+        <div class="example-result">
+          <div class="example-num">+31%</div>
+          <div class="example-desc"><strong>South region grew 31% QoQ</strong> — outperforming North (+12%) and East (+8%).</div>
+        </div>
+      </div>
+      <div class="example-card">
+        <div class="example-tag">Office manager · Order history</div>
+        <div class="example-q">"How many orders did we process per month this year?"</div>
+        <div class="example-result">
+          <div class="example-num">847</div>
+          <div class="example-desc"><strong>Monthly average across the year.</strong> Peak in December with 1,240 orders.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ── COMPARISON ── -->
+<section class="section">
+  <div class="wrap">
+    <div class="section-tag">// Comparison</div>
+    <h2 class="section-title">Why not just<br><em>use Excel?</em></h2>
+    <p class="section-sub">Excel is powerful — but getting answers requires skills most people don't have.</p>
+    <div class="compare-wrap">
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th class="hl">QueryAI</th>
+            <th>Excel</th>
+            <th>ChatGPT</th>
+            <th>BI Tools</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Ask in plain English</td>
+            <td class="hl"><span class="chk">✓</span></td>
+            <td><span class="crs">✗</span></td>
+            <td><span class="chk">✓</span></td>
+            <td><span class="prt">Partial</span></td>
+          </tr>
+          <tr>
+            <td>Data never leaves your device</td>
+            <td class="hl"><span class="chk">✓</span> Guaranteed</td>
+            <td><span class="chk">✓</span></td>
+            <td><span class="crs">✗</span> Sent to OpenAI</td>
+            <td><span class="crs">✗</span> Cloud upload</td>
+          </tr>
+          <tr>
+            <td>No technical knowledge needed</td>
+            <td class="hl"><span class="chk">✓</span></td>
+            <td><span class="crs">✗</span></td>
+            <td><span class="chk">✓</span></td>
+            <td><span class="crs">✗</span></td>
+          </tr>
+          <tr>
+            <td>Results in under 2 seconds</td>
+            <td class="hl"><span class="chk">✓</span></td>
+            <td><span class="chk">✓</span></td>
+            <td><span class="prt">5–20 sec</span></td>
+            <td><span class="prt">Setup needed</span></td>
+          </tr>
+          <tr>
+            <td>Free to use</td>
+            <td class="hl"><span class="chk">✓</span></td>
+            <td><span class="crs">✗</span></td>
+            <td><span class="crs">✗</span></td>
+            <td><span class="crs">✗</span></td>
+          </tr>
+          <tr>
+            <td>Works offline</td>
+            <td class="hl"><span class="chk">✓</span></td>
+            <td><span class="chk">✓</span></td>
+            <td><span class="crs">✗</span></td>
+            <td><span class="crs">✗</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ── PRIVACY ── -->
+<section class="section">
+  <div class="wrap">
+    <div class="section-tag">// Privacy</div>
+    <h2 class="section-title">Your data belongs<br>to you. <em>Literally.</em></h2>
+    <p class="section-sub">We don't say "private" because it sounds good. Here's the technical proof.</p>
+    <div class="privacy-card">
+      <div class="priv-left">
+        <div class="priv-badge"><span>●</span> Technical proof</div>
+        <h3>No server. No upload. No exceptions.</h3>
+        <p>Open DevTools → Network while running a query. You won't see a single request to our servers — because there aren't any. QueryAI is a static webpage. There is no backend.</p>
+      </div>
+      <div class="priv-right">
+        <div class="priv-item"><span class="priv-chk">✓</span><span>SQL.js runs as WebAssembly inside your browser tab</span></div>
+        <div class="priv-item"><span class="priv-chk">✓</span><span>No backend server or database exists</span></div>
+        <div class="priv-item"><span class="priv-chk">✓</span><span>Works fully offline after initial load</span></div>
+        <div class="priv-item"><span class="priv-chk">✓</span><span>Only your question (not your data) goes to Gemini</span></div>
+        <div class="priv-item"><span class="priv-chk">✓</span><span>API key stored only in your localStorage</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ── ABOUT ── -->
+<section class="section">
+  <div class="wrap">
+    <div class="section-tag">// Why I built this</div>
+    <h2 class="section-title">No big corporation<br><em>behind this.</em></h2>
+    <div class="about-card">
+      <div class="about-top">
+        <div class="about-avatar">T</div>
+        <div>
+          <div class="about-name">Theodor</div>
+          <div class="about-role">// Builder, QueryAI · Age 15</div>
+        </div>
+      </div>
+      <div class="about-body">
+        <p>I'm Theodor — a 15-year-old developer. I built QueryAI because I believe <strong>you shouldn't have to choose between AI power and data privacy.</strong></p>
+        <p>Most AI data tools send your files to the cloud. QueryAI doesn't. I spent weeks making sure everything runs locally in your browser using SQL.js — a real SQLite engine. <strong>Your data stays in your RAM, not on some server you don't control.</strong></p>
+        <p>No big corporation behind this. Just a tool built to work honestly for you.</p>
+      </div>
+      <div class="about-quote">"Privacy shouldn't be a <em>premium feature</em> — it should be the default."</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FINAL CTA ── -->
+<section class="final-cta">
+  <h2>Ready?<br><em>3 queries free.</em></h2>
+  <p>No signup. No credit card. Just open it and go.</p>
+  <a href="app.html" class="btn-primary" style="font-size:16px;padding:16px 36px;margin:0 auto">▶ Open the app</a>
+  <div class="final-proof">
+    <span>✓ Free to start</span>
+    <span>✓ No registration</span>
+    <span>✓ Your data stays local</span>
+    <span>✓ Works offline</span>
+  </div>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <span>© 2025 QueryAI — Built by Theodor</span>
+  <div class="footer-links">
+    <a href="app.html">App</a>
+    <a href="https://aistudio.google.com/app/apikey" target="_blank">Get API Key</a>
+    <a href="mailto:hello@queryai.app">Contact</a>
+  </div>
+</footer>
+
+</body>
+</html>
