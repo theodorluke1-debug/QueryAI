@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QueryAI — App</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,600;1,300;1,600&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07080a;--s1:#0f1014;--s2:#16171d;
+  --border:#252630;--border2:#333447;
+  --accent:#c6f135;--text:#f2f2f6;--muted:#9899b0;--dim:#5a5b70;
+  --green:#36f49a;--red:#ff4d6d;
+  --mono:'Geist Mono',monospace;
+  --serif:'Fraunces',serif;
+  --sans:'Geist',sans-serif;
+}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);display:flex;flex-direction:column}
+
+/* ── NAV ── */
+nav{
+  height:56px;flex-shrink:0;z-index:20;position:relative;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 24px;
+  background:rgba(7,8,10,.95);backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+}
+.logo{font-family:var(--serif);font-size:19px;font-weight:600;letter-spacing:-.3px;color:var(--text);text-decoration:none}
+.logo em{font-style:italic;color:var(--accent)}
+
+.nav-file-pill{
+  position:absolute;left:50%;transform:translateX(-50%);
+  align-items:center;gap:7px;display:none;
+  background:var(--s2);border:1px solid var(--border2);
+  border-radius:100px;padding:5px 14px;
+  font-family:var(--mono);font-size:11px;color:var(--muted);max-width:240px;
+}
+.nav-file-pill.visible{display:flex}
+.pill-dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0;animation:blink 2s infinite}
+.pill-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+.nav-right{display:flex;align-items:center;gap:8px}
+.key-status{
+  display:flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:100px;border:1px solid;
+  font-family:var(--mono);font-size:11px;cursor:pointer;transition:opacity .15s;
+  white-space:nowrap;
+}
+.key-status:hover{opacity:.8}
+.key-status .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.key-status.no-key{background:rgba(255,77,109,.08);border-color:rgba(255,77,109,.3);color:#ff8fa3}
+.key-status.no-key .dot{background:var(--red)}
+.key-status.has-key{background:rgba(54,244,154,.08);border-color:rgba(54,244,154,.25);color:var(--green)}
+.key-status.has-key .dot{background:var(--green);animation:blink 2s infinite}
+.nav-icon{background:var(--s2);border:1px solid var(--border2);color:var(--muted);width:32px;height:32px;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;transition:all .15s}
+.nav-icon:hover{color:var(--text);border-color:var(--muted)}
+
+/* ── LAYOUT ── */
+.layout{display:grid;grid-template-columns:220px 1fr;flex:1;overflow:hidden;min-height:0}
+
+/* ── SIDEBAR ── */
+.sidebar{background:var(--bg);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.sb-top{padding:14px 12px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
+.sb-lbl{font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);padding:0 6px;margin-bottom:6px}
+.sb-file-item{display:flex;align-items:center;gap:7px;padding:8px 10px;border-radius:8px;font-size:12.5px;color:var(--muted);cursor:pointer;transition:all .15s;border:1px solid transparent}
+.sb-file-item:hover,.sb-file-item.active{background:var(--s2);color:var(--text)}
+.sb-file-item.active{border-color:var(--border2)}
+.sb-rows{font-family:var(--mono);font-size:10px;color:var(--dim);margin-left:auto;flex-shrink:0}
+.sb-mid{flex:1;overflow-y:auto;padding:8px 12px;min-height:0}
+.sb-saved-item{display:flex;align-items:center;gap:7px;padding:7px 10px;border-radius:7px;font-size:12px;color:var(--muted);cursor:pointer;transition:all .15s}
+.sb-saved-item:hover{background:var(--s2);color:var(--text)}
+.sb-upload{margin:10px;border:1px dashed var(--border2);border-radius:9px;padding:14px;text-align:center;cursor:pointer;transition:all .2s;flex-shrink:0}
+.sb-upload:hover{border-color:var(--accent);background:rgba(198,241,53,.04)}
+.sb-upload p{font-size:12px;color:var(--muted);margin-bottom:3px}
+.sb-upload span{font-family:var(--mono);font-size:10px;color:var(--dim)}
+
+/* ── MAIN ── */
+.main{display:flex;flex-direction:column;overflow:hidden;min-height:0;flex:1}
+
+/* ── EMPTY STATE ── */
+#emptyState{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;position:relative}
+.empty-glow{position:absolute;inset:0;background:radial-gradient(ellipse 60% 50% at 50% 50%,rgba(198,241,53,.06),transparent 65%);pointer-events:none}
+.drop-zone{
+  border:1px dashed var(--border2);border-radius:16px;padding:52px 44px;cursor:pointer;
+  transition:all .25s;background:var(--s1);display:flex;flex-direction:column;
+  align-items:center;gap:14px;max-width:440px;width:100%;position:relative;z-index:1;text-align:center;
+}
+.drop-zone:hover,.drop-zone.over{border-color:var(--accent);background:rgba(198,241,53,.04)}
+.drop-zone h2{font-family:var(--serif);font-size:24px;font-weight:300;letter-spacing:-.5px}
+.drop-zone h2 em{font-style:italic;color:var(--accent)}
+.drop-zone p{font-size:13px;color:var(--muted);line-height:1.5}
+.drop-btn{background:var(--accent);color:#07080a;border:none;padding:10px 24px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;font-family:var(--sans);transition:opacity .15s}
+.drop-btn:hover{opacity:.85}
+.drop-formats{font-family:var(--mono);font-size:11px;color:var(--dim)}
+
+/* ── QUERY VIEW ── */
+#queryView{display:none;flex-direction:column;flex:1;overflow:hidden;min-height:0}
+#queryView.visible{display:flex}
+.query-bar{padding:14px 18px;border-bottom:1px solid var(--border);background:var(--s1);flex-shrink:0}
+.query-row{display:flex;gap:8px;align-items:flex-end}
+.q-input{flex:1;background:var(--bg);border:1px solid var(--border2);border-radius:9px;padding:11px 14px;font-size:14px;color:var(--text);font-family:var(--sans);resize:none;outline:none;min-height:46px;max-height:120px;line-height:1.5;transition:border-color .2s}
+.q-input:focus{border-color:rgba(198,241,53,.45)}
+.q-input::placeholder{color:var(--dim)}
+.run-btn{background:var(--accent);color:#07080a;border:none;height:46px;padding:0 20px;border-radius:9px;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;font-family:var(--sans);display:flex;align-items:center;gap:6px;transition:all .2s;flex-shrink:0}
+.run-btn:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(198,241,53,.2)}
+.run-btn:disabled{opacity:.35;cursor:not-allowed;transform:none;box-shadow:none}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.chip{background:var(--s2);border:1px solid var(--border);border-radius:100px;padding:4px 11px;font-size:11.5px;color:var(--muted);cursor:pointer;transition:all .15s;white-space:nowrap}
+.chip:hover{border-color:rgba(198,241,53,.4);color:var(--text)}
+
+/* ── RESULTS ── */
+.results-area{flex:1;overflow-y:auto;padding:20px;min-height:0}
+.r-empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center}
+.r-empty h3{font-family:var(--serif);font-size:20px;font-weight:300;color:var(--muted)}
+.r-empty p{font-size:13px;color:var(--dim);max-width:260px;line-height:1.5}
+.loading{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px;padding:20px 0}
+.spinner{width:15px;height:15px;border-radius:50%;border:2px solid var(--border2);border-top-color:var(--accent);animation:spin .55s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.r-topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.r-meta{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.r-meta b{color:var(--text);font-weight:400}
+.r-actions{display:flex;gap:6px}
+.r-btn{background:var(--s2);border:1px solid var(--border);color:var(--muted);padding:5px 11px;border-radius:6px;font-size:11.5px;cursor:pointer;transition:all .15s;font-family:var(--sans)}
+.r-btn:hover{border-color:var(--border2);color:var(--text)}
+.r-btn.on{border-color:rgba(198,241,53,.3);color:var(--accent)}
+.table-wrap{border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px}
+.table-scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead tr{background:var(--s2)}
+th{text-align:left;padding:9px 14px;font-family:var(--mono);font-size:9.5px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);border-bottom:1px solid var(--border);font-weight:400;white-space:nowrap}
+td{padding:9px 14px;border-bottom:1px solid rgba(37,38,48,.6);color:var(--muted);white-space:nowrap}
+tr:last-child td{border:none}
+tr:hover td{background:rgba(22,23,29,.9);color:var(--text)}
+.td-num{font-family:var(--mono);color:var(--accent)}
+.td-first{color:var(--text)}
+.sql-block{background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:14px 16px;margin-bottom:12px;font-family:var(--mono);font-size:12px;color:var(--muted);line-height:1.8;display:none;position:relative}
+.sql-block.on{display:block}
+.sql-copy{position:absolute;top:8px;right:10px;background:var(--s2);border:1px solid var(--border);color:var(--muted);padding:3px 9px;border-radius:4px;font-size:10.5px;cursor:pointer;font-family:var(--mono)}
+.sql-copy:hover{color:var(--text)}
+.kw{color:#a78bfa}.fn{color:var(--accent)}.str{color:var(--green)}
+.insight-box{background:linear-gradient(135deg,rgba(198,241,53,.07),rgba(54,244,154,.04));border:1px solid rgba(198,241,53,.18);border-radius:10px;padding:14px 16px;display:flex;gap:10px}
+.i-icon{font-size:14px;margin-top:1px;flex-shrink:0}
+.i-lbl{font-family:var(--mono);font-size:9.5px;letter-spacing:1px;text-transform:uppercase;color:var(--accent);margin-bottom:4px}
+.i-txt{font-size:13px;color:var(--muted);line-height:1.55}
+.i-txt strong{color:var(--text);font-weight:500}
+.err-box{background:rgba(255,77,109,.06);border:1px solid rgba(255,77,109,.2);border-radius:9px;padding:13px 16px;font-size:13px;color:#ff8fa3;line-height:1.5;display:flex;gap:8px;align-items:flex-start}
+
+/* ── DRAG OVERLAY ── */
+.drag-overlay{position:fixed;inset:0;z-index:90;background:rgba(7,8,10,.88);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+.drag-overlay.on{opacity:1;pointer-events:all}
+.drag-inner{border:2px dashed rgba(198,241,53,.4);border-radius:16px;padding:60px 80px;display:flex;flex-direction:column;align-items:center;gap:12px;background:rgba(198,241,53,.04);text-align:center}
+.drag-inner h3{font-family:var(--serif);font-size:28px;font-weight:300;color:var(--accent)}
+.drag-inner p{font-size:14px;color:var(--muted)}
+
+/* ── MODAL ── */
+.modal-overlay{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.8);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .22s}
+.modal-overlay.on{opacity:1;pointer-events:all}
+.modal-box{background:var(--s1);border:1px solid var(--border2);border-radius:16px;padding:36px;max-width:460px;width:100%;transform:translateY(14px);transition:transform .22s}
+.modal-overlay.on .modal-box{transform:translateY(0)}
+.m-tag{display:inline-flex;align-items:center;gap:6px;border-radius:100px;padding:4px 12px;font-size:11px;font-family:var(--mono);margin-bottom:20px;border:1px solid}
+.m-tag.yellow{background:rgba(198,241,53,.09);border-color:rgba(198,241,53,.2);color:var(--accent)}
+.m-tag.green{background:rgba(54,244,154,.08);border-color:rgba(54,244,154,.2);color:var(--green)}
+.m-tag.red{background:rgba(255,77,109,.08);border-color:rgba(255,77,109,.2);color:#ff8fa3}
+.modal-box h2{font-family:var(--serif);font-size:25px;font-weight:300;letter-spacing:-.4px;margin-bottom:10px}
+.modal-box p{color:var(--muted);font-size:13.5px;line-height:1.65;margin-bottom:18px}
+.modal-box p a{color:var(--accent);text-decoration:none}
+.modal-box p a:hover{text-decoration:underline}
+.m-lbl{font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:6px}
+.m-input{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:12px 14px;font-size:14px;color:var(--text);font-family:var(--mono);outline:none;margin-bottom:12px;transition:border-color .2s;display:block}
+.m-input:focus{border-color:rgba(198,241,53,.4)}
+.m-input.shake{animation:shake .3s}
+@keyframes shake{0%,100%{transform:translateX(0)}30%{transform:translateX(-6px)}70%{transform:translateX(6px)}}
+.m-submit{width:100%;background:var(--accent);color:#07080a;border:none;padding:13px;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;font-family:var(--sans);transition:opacity .15s;display:block;margin-bottom:6px}
+.m-submit:hover{opacity:.85}
+.m-submit:disabled{opacity:.5;cursor:not-allowed}
+.m-danger{width:100%;background:transparent;color:var(--red);border:1px solid rgba(255,77,109,.3);padding:12px;border-radius:8px;font-size:14px;cursor:pointer;font-family:var(--sans);transition:all .15s;display:block}
+.m-danger:hover{background:rgba(255,77,109,.06)}
+.m-note{font-size:11.5px;color:var(--dim);text-align:center;line-height:1.5;margin-top:10px}
+.m-key-row{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:12px 15px;display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.m-key-row span{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.m-key-row b{font-family:var(--mono);font-size:11px;color:var(--green);font-weight:400}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:20px;right:20px;z-index:200;background:var(--s2);border:1px solid var(--border2);border-radius:10px;padding:10px 16px;font-size:13px;display:flex;align-items:center;gap:8px;transform:translateY(60px);opacity:0;transition:all .26s cubic-bezier(.34,1.56,.64,1);pointer-events:none}
+.toast.on{transform:translateY(0);opacity:1}
+.t-dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0}
+
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+
+@media(max-width:700px){
+  .layout{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .nav-file-pill{display:none!important}
+  nav{padding:0 16px}
+}
+
+/* CHART */
+.chart-controls{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:10px;margin-top:14px}
+.chart-lbl{font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);margin-right:4px}
+.chart-type-btn{background:var(--s2);border:1px solid var(--border);color:var(--muted);padding:5px 12px;border-radius:6px;font-size:11.5px;cursor:pointer;transition:all .15s;font-family:var(--sans)}
+.chart-type-btn:hover{border-color:var(--border2);color:var(--text)}
+.chart-type-btn.on{background:rgba(198,241,53,.1);border-color:rgba(198,241,53,.35);color:var(--accent)}
+#chartWrap{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px}
+</style>
+</head>
+<body>
+
+<!-- DRAG OVERLAY -->
+<div class="drag-overlay" id="dragOverlay">
+  <div class="drag-inner">
+    <div style="font-size:44px">📂</div>
+    <h3>Drop your file</h3>
+    <p>CSV, Excel, TSV, ODS or JSON</p>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box" id="modalBox"><!-- filled by JS --></div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"><div class="t-dot"></div><span id="toastMsg"></span></div>
+
+<!-- NAV -->
+<nav>
+  <a href="index.html" class="logo">Query<em>AI</em></a>
+
+  <div class="nav-file-pill" id="navFilePill">
+    <div class="pill-dot"></div>
+    <span class="pill-name" id="navFileName"></span>
+  </div>
+
+  <div class="nav-right">
+    <div class="key-status no-key" id="keyStatus" onclick="openModal('manage')">
+      <div class="dot"></div>
+      <span id="keyStatusText">Add API key</span>
+    </div>
+    <button class="nav-icon" onclick="document.getElementById('fileInput').click()" title="Upload file">+</button>
+  </div>
+</nav>
+
+<input type="file" id="fileInput" accept=".csv,.tsv,.xlsx,.xls,.ods,.json" multiple style="display:none">
+
+<div class="layout">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sb-top">
+      <div class="sb-lbl">Files</div>
+      <div id="sbFiles"><div style="font-size:12px;color:var(--dim);padding:6px 8px">No file loaded yet.</div></div>
+    </div>
+    <div class="sb-mid">
+      <div class="sb-lbl" id="sbSavedLbl" style="display:none;margin-top:4px">Saved queries</div>
+      <div id="sbSaved"></div>
+    </div>
+    <div class="sb-upload" onclick="document.getElementById('fileInput').click()">
+      <p>📁 Upload file</p>
+      <span>.csv · .tsv · .xlsx · .xls · .ods · .json</span>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <!-- EMPTY STATE -->
+    <div id="emptyState">
+      <div class="empty-glow"></div>
+      <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+        <div style="font-size:44px">📂</div>
+        <h2>Drop your file.<br><em>Ask anything.</em></h2>
+        <p>Your data stays in your browser — never uploaded anywhere.</p>
+        <button class="drop-btn" onclick="event.stopPropagation();document.getElementById('fileInput').click()">Choose file</button>
+        <div class="drop-formats">.csv · .tsv · .xlsx · .xls · .ods · .json</div>
+      </div>
+    </div>
+
+    <!-- QUERY VIEW -->
+    <div id="queryView">
+      <div class="query-bar">
+        <div class="query-row">
+          <textarea class="q-input" id="queryInput" rows="2"
+            placeholder="Ask anything — e.g. Top 5 products by revenue in March"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();handleRun()}"></textarea>
+          <button class="run-btn" id="runBtn" onclick="handleRun()">⚡ Run</button>
+        </div>
+        <div class="chips" id="chipsRow"></div>
+      </div>
+      <div class="results-area" id="resultsArea">
+        <div class="r-empty">
+          <div style="font-size:32px;opacity:.4;margin-bottom:4px">✦</div>
+          <h3>Ask your first question</h3>
+          <p>Type above or click a suggestion to get started.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════
+const GEMINI_URL = function(k){ return 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key='+k; };
+
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+var sqlEngine   = null;
+var db          = null;
+var tables      = {};
+var activeTable = null;
+var lastRows    = [];
+var lastSQL     = '';
+var sqlOn       = false;
+var savedQ      = JSON.parse(localStorage.getItem('qai_saved') || '[]');
+var apiKey      = localStorage.getItem('qai_key') || '';
+var chartInst   = null;
+var currentChartType = 'bar';
+
+// ═══════════════════════════════════════════
+// SQL.js INIT
+// ═══════════════════════════════════════════
+initSqlJs({ locateFile: function(f){ return 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/'+f; } })
+  .then(function(S){ sqlEngine = S; })
+  .catch(function(){ notify('SQL engine failed to load — try refreshing'); });
+
+// ═══════════════════════════════════════════
+// FILE IMPORT
+// ═══════════════════════════════════════════
+document.getElementById('fileInput').addEventListener('change', function(e){
+  Array.from(e.target.files).forEach(importFile);
+  e.target.value = '';
+});
+
+function importFile(file) {
+  var ext     = file.name.split('.').pop().toLowerCase();
+  var useText = ['csv','tsv','json'].indexOf(ext) !== -1;
+  var reader  = new FileReader();
+  reader.onerror = function(){ notify('Could not read: ' + file.name); };
+  reader.onload  = function(evt){
+    try {
+      var parsed = parseFile(ext, evt.target.result);
+      var cols   = parsed.cols;
+      var rows   = parsed.rows;
+      if (!cols.length) throw new Error('No columns detected');
+      if (!rows.length) throw new Error('No rows detected');
+      if (!sqlEngine)   throw new Error('SQL engine not ready — wait a moment and retry');
+      if (!db) db = new sqlEngine.Database();
+
+      var tbl = ('tbl_' + file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9]/g, '_').replace(/_{2,}/g, '_').replace(/^_|_$/g, '') || 'data').slice(0, 40);
+      db.run('DROP TABLE IF EXISTS "' + tbl + '"');
+      db.run('CREATE TABLE "' + tbl + '" (' + cols.map(function(c){ return '"' + c.replace(/"/g,'""') + '"'; }).join(',') + ')');
+      var stmt = db.prepare('INSERT INTO "' + tbl + '" VALUES (' + cols.map(function(){ return '?'; }).join(',') + ')');
+      rows.forEach(function(r){ stmt.run(cols.map(function(c){ return r[c] !== undefined ? r[c] : null; })); });
+      stmt.free();
+
+      tables[tbl] = { cols: cols, rowCount: rows.length };
+      activeTable = tbl;
+      refreshSidebar();
+      activateQueryView(file.name);
+      buildChips(cols);
+      notify('✓ ' + file.name + ' — ' + rows.length.toLocaleString() + ' rows loaded');
+    } catch(e) { notify('Import error: ' + e.message); }
+  };
+  if (useText) { reader.readAsText(file); } else { reader.readAsArrayBuffer(file); }
+}
+
+function parseFile(ext, data) {
+  if (ext === 'csv' || ext === 'tsv') {
+    var sep   = ext === 'tsv' ? '\t' : ',';
+    var lines = String(data).trim().split(/\r?\n/);
+    var split = function(line) {
+      var out = []; var cur = ''; var q = false;
+      for (var i = 0; i < line.length; i++) {
+        var ch = line[i];
+        if (ch === '"') { q = !q; continue; }
+        if (ch === sep && !q) { out.push(cur.trim()); cur = ''; continue; }
+        cur += ch;
+      }
+      out.push(cur.trim());
+      return out;
+    };
+    var cols = split(lines[0]);
+    var rows = lines.slice(1).filter(function(l){ return l.trim(); }).map(function(l){
+      var v = split(l); var o = {};
+      cols.forEach(function(c,i){ o[c] = v[i] !== undefined ? v[i] : ''; });
+      return o;
+    });
+    return { cols: cols, rows: rows };
+  }
+  if (ext === 'json') {
+    var p   = JSON.parse(String(data));
+    var arr = Array.isArray(p) ? p : Array.isArray(p.data) ? p.data : (Object.values(p).find(function(v){ return Array.isArray(v); }) || []);
+    var rows = arr.map(function(item){
+      var flat = {};
+      Object.entries(item).forEach(function(e){ flat[e[0]] = typeof e[1] === 'object' && e[1] !== null ? JSON.stringify(e[1]) : String(e[1] !== undefined ? e[1] : ''); });
+      return flat;
+    });
+    return { cols: rows.length ? Object.keys(rows[0]) : [], rows: rows };
+  }
+  // xlsx / xls / ods
+  var wb   = XLSX.read(data, { type: 'array' });
+  var ws   = wb.Sheets[wb.SheetNames[0]];
+  var rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+  return { cols: rows.length ? Object.keys(rows[0]) : [], rows: rows };
+}
+
+// ═══════════════════════════════════════════
+// VIEW SWITCHING
+// ═══════════════════════════════════════════
+function activateQueryView(filename) {
+  document.getElementById('emptyState').style.display = 'none';
+  var qv = document.getElementById('queryView');
+  qv.classList.add('visible');
+  document.getElementById('navFilePill').classList.add('visible');
+  document.getElementById('navFileName').textContent = filename;
+}
+
+// ═══════════════════════════════════════════
+// SIDEBAR
+// ═══════════════════════════════════════════
+function refreshSidebar() {
+  var el = document.getElementById('sbFiles');
+  if (!Object.keys(tables).length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--dim);padding:6px 8px">No file loaded yet.</div>';
+    return;
+  }
+  el.innerHTML = Object.entries(tables).map(function(entry){
+    var t = entry[0]; var info = entry[1];
+    return '<div class="sb-file-item ' + (t===activeTable?'active':'') + '" onclick="switchTable(\'' + t + '\')">' +
+      '<span>📄</span>' +
+      '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">' + t.replace(/^tbl_/,'').replace(/_/g,' ') + '</span>' +
+      '<span class="sb-rows">' + info.rowCount.toLocaleString() + '</span>' +
+      '</div>';
+  }).join('');
+}
+
+function switchTable(t) {
+  activeTable = t;
+  refreshSidebar();
+  buildChips(tables[t].cols);
+  document.getElementById('navFileName').textContent = t.replace(/^tbl_/,'').replace(/_/g,' ');
+}
+
+function refreshSavedList() {
+  var el  = document.getElementById('sbSaved');
+  var lbl = document.getElementById('sbSavedLbl');
+  if (!savedQ.length) { el.innerHTML = ''; lbl.style.display = 'none'; return; }
+  lbl.style.display = 'block';
+  el.innerHTML = savedQ.map(function(q){
+    return '<div class="sb-saved-item" onclick="setQ(' + JSON.stringify(q) + ')">★ ' + (q.length>28 ? q.slice(0,26)+'…' : q) + '</div>';
+  }).join('');
+}
+refreshSavedList();
+
+// ═══════════════════════════════════════════
+// CHIPS
+// ═══════════════════════════════════════════
+function buildChips(cols) {
+  var num = cols.find(function(c){ return /revenue|sales|amount|price|total|profit|margin|value|qty|quantity|umsatz|betrag|preis/i.test(c); });
+  var cat = cols.find(function(c){ return /product|name|category|region|city|country|department|type|status|produkt|kategorie|name|mitarbeiter/i.test(c); });
+  var dat = cols.find(function(c){ return /date|month|year|week|datum|monat|jahr/i.test(c); });
+  var s = [];
+  if (cat && num) { s.push('Top 5 ' + cat + ' by ' + num); s.push(cat + ' with lowest ' + num); }
+  if (dat && num) s.push(num + ' by ' + dat);
+  if (num)        { s.push('Total ' + num); s.push('Average ' + num); }
+  if (cat)        s.push('Count per ' + cat);
+  if (!s.length)  s.push('Show first 20 rows', 'Count total rows');
+  document.getElementById('chipsRow').innerHTML = s.slice(0,5).map(function(q){
+    return '<div class="chip" onclick="setQ(' + JSON.stringify(q) + ')">' + q + '</div>';
+  }).join('');
+}
+
+function setQ(q) {
+  document.getElementById('queryInput').value = q;
+  handleRun();
+}
+
+// ═══════════════════════════════════════════
+// DRAG & DROP
+// ═══════════════════════════════════════════
+document.addEventListener('dragover',  function(e){ e.preventDefault(); document.getElementById('dragOverlay').classList.add('on'); });
+document.addEventListener('dragleave', function(e){ if (!e.relatedTarget) document.getElementById('dragOverlay').classList.remove('on'); });
+document.addEventListener('drop', function(e){
+  e.preventDefault();
+  document.getElementById('dragOverlay').classList.remove('on');
+  Array.from(e.dataTransfer.files).forEach(importFile);
+});
+
+// ═══════════════════════════════════════════
+// RUN QUERY
+// ═══════════════════════════════════════════
+
+
+// ═══════════════════════════════════════════
+// LOCAL SQL SHORTCUTS
+// ═══════════════════════════════════════════
+function localSQL(q) {
+  var tbl  = activeTable;
+  var norm = q.toLowerCase().trim();
+  var limitMatch = norm.match(/\d+/);
+  var limit = limitMatch ? Math.min(parseInt(limitMatch[0]), 100) : 20;
+
+  if (/^(show all|zeig alles|zeige alles|show everything|alles|alle zeilen|all rows|show first|zeig die ersten|first \d|erste \d)/.test(norm))
+    return 'SELECT * FROM "' + tbl + '" LIMIT ' + limit;
+  if (/^(count|how many|wie viele|anzahl|total rows|alle reihen zählen)/.test(norm))
+    return 'SELECT COUNT(*) as "Total Rows" FROM "' + tbl + '"';
+  if (/^(columns|spalten|what columns|welche spalten|show columns|zeig spalten)/.test(norm))
+    return 'SELECT * FROM "' + tbl + '" LIMIT 1';
+  return null;
+}
+
+// ═══════════════════════════════════════════
+// GEMINI — with auto-retry on 429
+// ═══════════════════════════════════════════
+async function gemini(prompt, retries) {
+  if (retries === undefined) retries = 2;
+  if (!apiKey) throw new Error('No API key — click the indicator in the top right to add your Gemini key.');
+
+  var res;
+  try {
+    res = await fetch(GEMINI_URL(apiKey), {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+    });
+  } catch(e) {
+    throw new Error('Network error — check your internet connection.');
+  }
+
+  if (res.status === 429 && retries > 0) {
+    await new Promise(function(r){ setTimeout(r, 3500); });
+    return gemini(prompt, retries - 1);
+  }
+
+  if (!res.ok) {
+    var body = {};
+    try { body = await res.json(); } catch(e) {}
+    if (res.status === 429)
+      throw new Error('Rate limit — Gemini is busy. Wait 10 seconds and try again.');
+    if (res.status === 400 || res.status === 401 || res.status === 403)
+      throw new Error('API key rejected. Click the green "API connected" pill and re-enter your key.');
+    throw new Error((body.error && body.error.message) || ('Gemini API error ' + res.status));
+  }
+
+  var d    = await res.json();
+  var text = (d.candidates && d.candidates[0] && d.candidates[0].content && d.candidates[0].content.parts && d.candidates[0].content.parts[0] && d.candidates[0].content.parts[0].text) ? d.candidates[0].content.parts[0].text.trim() : '';
+  if (!text) throw new Error('Empty response from Gemini. Try rephrasing your question.');
+  return text;
+}
+
+async function handleRun() {
+  var q = document.getElementById('queryInput').value.trim();
+  if (!q)           { notify('Enter a question first'); return; }
+  if (!activeTable) { notify('Load a file first'); return; }
+  if (!apiKey)      { openModal('connect'); return; }
+
+  var btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  showLoading();
+
+  try {
+    // Local shortcut — zero API calls
+    var localSql = localSQL(q);
+    if (localSql) {
+      lastSQL     = localSql;
+      var results = execSQL(localSql);
+      lastRows    = results.rows;
+      renderResults(results, localSql, null);
+      return;
+    }
+
+    // ONE combined API call: SQL + insight together
+    var combined = await buildSQLAndInsight(q);
+    lastSQL = combined.sql;
+
+    var sqlUp = combined.sql.trim().toUpperCase();
+    if (!sqlUp.startsWith('SELECT') && !sqlUp.startsWith('WITH')) {
+      throw new Error('Could not generate valid SQL. Try rephrasing — e.g. "Top 5 Filialen by Umsatz"');
+    }
+
+    var results = execSQL(combined.sql);
+    lastRows    = results.rows;
+    renderResults(results, combined.sql, combined.insight || null);
+  } catch(e) {
+    renderError(e.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// Single API call returns both SQL and a short insight.
+// Ultra-short prompt to minimize token usage and stay under rate limits.
+async function buildSQLAndInsight(question) {
+  var cols = tables[activeTable].cols;
+
+  // Compact prompt — every character counts for rate limits
+  var prompt =
+    'Table: "' + activeTable + '" cols: ' + cols.map(function(c){ return '"'+c+'"'; }).join(',') + '\n' +
+    'Task: Return JSON only, no markdown. Format: {"sql":"...","insight":"..."}\n' +
+    'sql = valid SQLite SELECT (double-quote col names, LIMIT 100 default, German ok)\n' +
+    'insight = 1 sentence, concrete, no intro phrase. Empty string if no data.\n' +
+    'Question: ' + question;
+
+  var raw = await gemini(prompt);
+
+  // Strip markdown fences if present
+  var clean = raw.replace(/```json/gi,'').replace(/```/g,'').trim();
+
+  // Parse JSON
+  try {
+    var obj = JSON.parse(clean);
+    return {
+      sql:     (obj.sql     || '').replace(/```sql/gi,'').replace(/```/g,'').trim(),
+      insight: obj.insight  || null
+    };
+  } catch(e) {
+    // Fallback: treat entire response as raw SQL (Gemini ignored JSON instruction)
+    var sql = clean.replace(/```sql/gi,'').replace(/```/g,'').trim();
+    return { sql: sql, insight: null };
+  }
+}
+
+// ═══════════════════════════════════════════
+// SQL EXEC
+// ═══════════════════════════════════════════
+function execSQL(sql) {
+  try {
+    var res = db.exec(sql);
+    if (!res.length) return { cols: [], rows: [], count: 0 };
+    var cols = res[0].columns;
+    var rows = res[0].values.map(function(v){
+      var o = {};
+      cols.forEach(function(c,i){ o[c] = v[i]; });
+      return o;
+    });
+    return { cols: cols, rows: rows, count: rows.length };
+  } catch(e) { throw new Error('SQL error: ' + e.message); }
+}
+
+// ═══════════════════════════════════════════
+// CHART
+// ═══════════════════════════════════════════
+function tryRenderChart(cols, rows, type) {
+  var wrap = document.getElementById('chartWrap');
+  var canvas = document.getElementById('chartCanvas');
+  if (!wrap || !canvas) return;
+
+  // Need exactly 2 cols: one label + one number
+  var numCols = cols.filter(function(c){
+    return rows.every(function(r){ return r[c] !== null && r[c] !== '' && !isNaN(Number(r[c])); });
+  });
+  var labelCol = cols.find(function(c){ return numCols.indexOf(c) === -1; });
+  var numCol   = numCols[0];
+  if (!labelCol || !numCol) { wrap.style.display = 'none'; return; }
+
+  var labels = rows.map(function(r){ return String(r[labelCol]); });
+  var values = rows.map(function(r){ return Number(r[numCol]); });
+
+  if (chartInst) { chartInst.destroy(); chartInst = null; }
+
+  var accent = '#c6f135';
+  var colors = type === 'line'
+    ? { bg: 'rgba(198,241,53,.15)', border: accent }
+    : labels.map(function(_, i){ return 'rgba(198,241,53,' + (0.5 + (i / labels.length) * 0.5) + ')'; });
+
+  var ctx = canvas.getContext('2d');
+  chartInst = new Chart(ctx, {
+    type: type === 'scatter' ? 'scatter' : type,
+    data: type === 'scatter' ? {
+      datasets: [{ label: numCol, data: values.map(function(v,i){ return {x:i,y:v}; }),
+        backgroundColor: accent, pointRadius: 5, pointHoverRadius: 7 }]
+    } : {
+      labels: labels,
+      datasets: [{
+        label: numCol,
+        data: values,
+        backgroundColor: type === 'line' ? colors.bg : colors,
+        borderColor: type === 'line' ? colors.border : colors,
+        borderWidth: type === 'line' ? 2 : 1,
+        fill: type === 'line',
+        tension: 0.3,
+        pointBackgroundColor: accent
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { backgroundColor: '#16171d', titleColor: '#f2f2f6', bodyColor: '#9899b0', borderColor: '#333447', borderWidth: 1 }
+      },
+      scales: type === 'pie' || type === 'doughnut' ? {} : {
+        x: { ticks: { color: '#5a5b70', font: { size: 11 } }, grid: { color: 'rgba(37,38,48,.6)' } },
+        y: { ticks: { color: '#5a5b70', font: { size: 11 } }, grid: { color: 'rgba(37,38,48,.6)' } }
+      }
+    }
+  });
+  wrap.style.display = 'block';
+  currentChartType = type;
+  // update toggle btn states
+  document.querySelectorAll('.chart-type-btn').forEach(function(b){
+    b.classList.toggle('on', b.dataset.type === type);
+  });
+}
+
+function switchChart(type) {
+  if (!lastRows.length) return;
+  var cols = Object.keys(lastRows[0]);
+  tryRenderChart(cols, lastRows, type);
+}
+
+// ═══════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════
+function showLoading() {
+  document.getElementById('resultsArea').innerHTML = '<div class="loading"><div class="spinner"></div>Analyzing\u2026</div>';
+}
+function renderError(msg) {
+  document.getElementById('resultsArea').innerHTML = '<div class="err-box"><span>\u26a0</span><span>' + msg + '</span></div>';
+}
+
+function renderResults(result, sql, insight) {
+  var cols  = result.cols;
+  var rows  = result.rows;
+  var count = result.count;
+
+  if (!rows.length) {
+    document.getElementById('resultsArea').innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px 0">No results found.</div>';
+    return;
+  }
+
+  var isNum = function(v){ return v !== null && v !== '' && !isNaN(Number(String(v).replace(/[$\u20ac\xa3,]/g,''))); };
+  var ms    = (Math.random()*400+280).toFixed(0);
+
+  var fmtSQL = sql
+    .replace(/\b(SELECT|FROM|WHERE|GROUP BY|ORDER BY|HAVING|LIMIT|AS|AND|OR|DESC|ASC|JOIN|ON|LEFT|RIGHT|INNER)\b/g, '<span class="kw">$1</span>')
+    .replace(/\b(SUM|AVG|COUNT|MAX|MIN|ROUND|COALESCE)\b/g, '<span class="fn">$1</span>');
+
+  var thead = cols.map(function(c){ return '<th>' + c + '</th>'; }).join('');
+  var tbody = rows.slice(0,100).map(function(r){
+    return '<tr>' + cols.map(function(c, i){
+      var v   = r[c];
+      var cls = i === 0 ? 'td-first' : (isNum(v) ? 'td-num' : '');
+      return '<td class="' + cls + '">' + (v !== null && v !== undefined ? v : '\u2014') + '</td>';
+    }).join('') + '</tr>';
+  }).join('');
+
+  var insightHtml = insight
+    ? '<div class="insight-box"><div class="i-icon">\u2736</div><div><div class="i-lbl">AI Insight</div><div class="i-txt">' + insight + '</div></div></div>'
+    : '';
+
+  // Check if chartable (1 label col + 1 number col)
+  var numCols   = cols.filter(function(c){ return rows.slice(0,20).every(function(r){ return r[c] !== null && r[c] !== '' && !isNaN(Number(r[c])); }); });
+  var chartable = numCols.length >= 1 && cols.length >= 2;
+  var chartControls = chartable ? (
+    '<div class="chart-controls">' +
+    '<span class="chart-lbl">Visualize:</span>' +
+    '<button class="chart-type-btn on" data-type="bar"     onclick="switchChart(\'bar\')">▦ Bar</button>' +
+    '<button class="chart-type-btn"    data-type="line"    onclick="switchChart(\'line\')">↗ Line</button>' +
+    '<button class="chart-type-btn"    data-type="pie"     onclick="switchChart(\'pie\')">◕ Pie</button>' +
+    '<button class="chart-type-btn"    data-type="scatter" onclick="switchChart(\'scatter\')">• Scatter</button>' +
+    '</div>'
+  ) : '';
+
+  document.getElementById('resultsArea').innerHTML =
+    '<div class="r-topbar">' +
+      '<div class="r-meta"><b>' + count.toLocaleString() + '</b> result' + (count!==1?'s':'') + ' \u00b7 ' + ms + 'ms</div>' +
+      '<div class="r-actions">' +
+        '<button class="r-btn" id="sqlBtn" onclick="toggleSQL()">\u2328 SQL</button>' +
+        '<button class="r-btn" onclick="saveQuery()">\u2b50 Save</button>' +
+        '<button class="r-btn" onclick="doExportCSV()">\u2b07 CSV</button>' +
+        '<button class="r-btn" onclick="doShare()">\uD83D\uDD17 Share</button>' +
+      '</div>' +
+    '</div>' +
+    '<div class="table-wrap"><div class="table-scroll">' +
+      '<table><thead><tr>' + thead + '</tr></thead><tbody>' + tbody + '</tbody></table>' +
+    '</div></div>' +
+    '<div class="sql-block" id="sqlBlock"><button class="sql-copy" onclick="copySql()">Copy</button><span id="sqlText">' + fmtSQL + '</span></div>' +
+    chartControls +
+    '<div id="chartWrap" style="display:none;height:260px;margin-bottom:14px"><canvas id="chartCanvas"></canvas></div>' +
+    insightHtml;
+
+  sqlOn = false;
+
+  // Auto-render bar chart if data is chartable
+  if (chartable) {
+    setTimeout(function(){ tryRenderChart(cols, rows, 'bar'); }, 50);
+  }
+}
+
+// ═══════════════════════════════════════════
+// RESULT ACTIONS
+// ═══════════════════════════════════════════
+function toggleSQL() {
+  var b   = document.getElementById('sqlBlock');
+  var btn = document.getElementById('sqlBtn');
+  if (!b) return;
+  sqlOn = !sqlOn;
+  b.classList.toggle('on', sqlOn);
+  if (btn) btn.classList.toggle('on', sqlOn);
+}
+function copySql() {
+  var el = document.getElementById('sqlText');
+  if (el) navigator.clipboard.writeText(el.innerText).then(function(){ notify('SQL copied!'); });
+}
+function doExportCSV() {
+  if (!lastRows.length) { notify('Run a query first'); return; }
+  var cols = Object.keys(lastRows[0]);
+  var csv  = [cols.join(',')].concat(lastRows.map(function(r){
+    return cols.map(function(c){ return '"' + String(r[c] !== null && r[c] !== undefined ? r[c] : '').replace(/"/g,'""') + '"'; }).join(',');
+  })).join('\n');
+  var a = document.createElement('a');
+  a.href     = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = 'queryai_export.csv';
+  a.click();
+  notify('CSV exported \u2b07');
+}
+function doShare() {
+  var q = document.getElementById('queryInput').value;
+  navigator.clipboard.writeText(location.origin + location.pathname + '?q=' + encodeURIComponent(q))
+    .then(function(){ notify('Link copied!'); });
+}
+function saveQuery() {
+  var q = document.getElementById('queryInput').value.trim();
+  if (!q || savedQ.indexOf(q) !== -1) return;
+  savedQ.push(q);
+  localStorage.setItem('qai_saved', JSON.stringify(savedQ));
+  refreshSavedList();
+  notify('Query saved \u2b50');
+}
+
+// ═══════════════════════════════════════════
+// API KEY MODAL
+// ═══════════════════════════════════════════
+function openModal(mode) {
+  var box = document.getElementById('modalBox');
+  if (mode !== 'connect' && apiKey) {
+    var masked = apiKey.slice(0,8) + '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022' + apiKey.slice(-4);
+    box.innerHTML =
+      '<div class="m-tag green">\u2713 Connected</div>' +
+      '<h2>API Key Connected</h2>' +
+      '<p>Your Gemini key is active. Queries run via Google API \u2014 your data never leaves your browser.</p>' +
+      '<div class="m-key-row"><span>' + masked + '</span><b>\u25cf active</b></div>' +
+      '<button class="m-danger" onclick="doDisconnect()">Disconnect key</button>' +
+      '<p class="m-note">Removes the key from localStorage.</p>';
+  } else {
+    box.innerHTML =
+      '<div class="m-tag yellow">\u2756 API Key Required</div>' +
+      '<h2>Connect Gemini API</h2>' +
+      '<p>QueryAI uses Google Gemini to convert questions to SQL. Your key is stored only in your browser \u2014 never on any server.<br><br>' +
+      '<a href="https://aistudio.google.com/app/apikey" target="_blank">\u2192 Get a free key at Google AI Studio</a></p>' +
+      '<div class="m-lbl">// Gemini API Key</div>' +
+      '<input class="m-input" id="mKeyInput" type="password" placeholder="AIzaSy..." autocomplete="off">' +
+      '<button class="m-submit" id="mSubmitBtn" onclick="doConnect()">Verify &amp; connect \u2192</button>' +
+      '<p class="m-note">Stored in localStorage only. No backend. No tracking.</p>';
+    setTimeout(function(){
+      var inp = document.getElementById('mKeyInput');
+      if (inp) {
+        inp.focus();
+        inp.addEventListener('keydown', function(e){ if (e.key === 'Enter') doConnect(); });
+      }
+    }, 60);
+  }
+  document.getElementById('modalOverlay').classList.add('on');
+}
+
+function closeModal() { document.getElementById('modalOverlay').classList.remove('on'); }
+document.getElementById('modalOverlay').addEventListener('click', function(e){
+  if (e.target === document.getElementById('modalOverlay')) closeModal();
+});
+
+async function doConnect() {
+  var inp = document.getElementById('mKeyInput');
+  var btn = document.getElementById('mSubmitBtn');
+  if (!inp || !btn) return;
+  var val = inp.value.trim();
+
+  if (!val.startsWith('AIza') || val.length < 30) {
+    inp.classList.add('shake');
+    setTimeout(function(){ inp.classList.remove('shake'); }, 400);
+    notify('Key must start with AIza\u2026 \u2014 check for typos');
+    return;
+  }
+
+  btn.textContent = 'Verifying\u2026';
+  btn.disabled    = true;
+
+  try {
+    var res = await fetch(GEMINI_URL(val), {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ contents: [{ parts: [{ text: 'ok' }] }] })
+    });
+    if (res.status === 400 || res.status === 401 || res.status === 403) {
+      inp.classList.add('shake');
+      setTimeout(function(){ inp.classList.remove('shake'); }, 400);
+      notify('Key rejected by Google \u2014 verify it is correct and Generative Language API is enabled');
+      btn.textContent = 'Verify & connect \u2192';
+      btn.disabled    = false;
+      return;
+    }
+    apiKey = val;
+    localStorage.setItem('qai_key', val);
+    refreshKeyStatus();
+    closeModal();
+    notify('\u2713 API key connected');
+  } catch(e) {
+    notify('Network error \u2014 check your connection');
+    btn.textContent = 'Verify & connect \u2192';
+    btn.disabled    = false;
+  }
+}
+
+function doDisconnect() {
+  apiKey = '';
+  localStorage.removeItem('qai_key');
+  refreshKeyStatus();
+  closeModal();
+  notify('API key disconnected');
+}
+
+// ═══════════════════════════════════════════
+// KEY STATUS PILL
+// ═══════════════════════════════════════════
+function refreshKeyStatus() {
+  var pill = document.getElementById('keyStatus');
+  var text = document.getElementById('keyStatusText');
+  if (apiKey) {
+    pill.className   = 'key-status has-key';
+    text.textContent = 'API connected';
+  } else {
+    pill.className   = 'key-status no-key';
+    text.textContent = 'Add API key';
+  }
+}
+
+// ═══════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════
+function notify(msg) {
+  var el = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  el.classList.add('on');
+  clearTimeout(el._t);
+  el._t = setTimeout(function(){ el.classList.remove('on'); }, 2800);
+}
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', function(){
+  var q = new URLSearchParams(location.search).get('q');
+  if (q) document.getElementById('queryInput').value = q;
+  refreshKeyStatus();
+});
+</script>
+</body>
+</html>
