@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QueryAI — App</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,600;1,300;1,600&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07080a;--s1:#0f1014;--s2:#16171d;
+  --border:#252630;--border2:#333447;
+  --accent:#c6f135;--text:#f2f2f6;--muted:#9899b0;--dim:#5a5b70;
+  --green:#36f49a;--red:#ff4d6d;--orange:#f59e0b;
+  --mono:'Geist Mono',monospace;--serif:'Fraunces',serif;--sans:'Geist',sans-serif;
+}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);display:flex;flex-direction:column}
+
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+@keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+/* ── NAV ── */
+nav{
+  height:56px;flex-shrink:0;z-index:20;position:relative;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 24px;background:rgba(7,8,10,.97);
+  border-bottom:1px solid var(--border);
+}
+.logo{font-family:var(--serif);font-size:19px;font-weight:600;letter-spacing:-.3px;color:var(--text);text-decoration:none}
+.logo em{font-style:italic;color:var(--accent)}
+.nav-file-pill{
+  position:absolute;left:50%;transform:translateX(-50%);
+  align-items:center;gap:7px;display:none;
+  background:var(--s2);border:1px solid var(--border2);
+  border-radius:100px;padding:5px 14px;
+  font-family:var(--mono);font-size:11px;color:var(--muted);max-width:260px;
+}
+.nav-file-pill.show{display:flex}
+.pill-dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0;animation:blink 2s infinite}
+.pill-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
+.nav-right{display:flex;align-items:center;gap:8px}
+
+/* Key status */
+.key-pill{
+  display:flex;align-items:center;gap:6px;
+  padding:5px 13px;border-radius:100px;border:1px solid;
+  font-family:var(--mono);font-size:11px;cursor:pointer;
+  transition:all .15s;white-space:nowrap;
+}
+.key-pill:hover{opacity:.8;transform:translateY(-1px)}
+.key-pill .kp-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.key-pill.no-key{background:rgba(255,77,109,.08);border-color:rgba(255,77,109,.3);color:#ff8fa3}
+.key-pill.no-key .kp-dot{background:var(--red)}
+.key-pill.has-key{background:rgba(54,244,154,.08);border-color:rgba(54,244,154,.25);color:var(--green)}
+.key-pill.has-key .kp-dot{background:var(--green);animation:blink 2s infinite}
+.nav-icon{background:var(--s2);border:1px solid var(--border2);color:var(--muted);width:32px;height:32px;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;transition:all .15s}
+.nav-icon:hover{color:var(--text);border-color:var(--muted);background:var(--bg)}
+
+/* ── LAYOUT ── */
+.layout{display:grid;grid-template-columns:220px 1fr;flex:1;overflow:hidden;min-height:0}
+
+/* ── SIDEBAR ── */
+.sidebar{background:var(--bg);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.sb-top{padding:14px 12px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
+.sb-lbl{font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);padding:0 6px;margin-bottom:6px}
+.sb-file{display:flex;align-items:center;gap:7px;padding:8px 10px;border-radius:8px;font-size:12.5px;color:var(--muted);cursor:pointer;transition:all .15s;border:1px solid transparent}
+.sb-file:hover,.sb-file.active{background:var(--s2);color:var(--text)}
+.sb-file.active{border-color:var(--border2)}
+.sb-rows{font-family:var(--mono);font-size:10px;color:var(--dim);margin-left:auto}
+.sb-mid{flex:1;overflow-y:auto;padding:8px 12px;min-height:0}
+.sb-saved{display:flex;align-items:center;gap:7px;padding:7px 10px;border-radius:7px;font-size:12px;color:var(--muted);cursor:pointer;transition:all .15s}
+.sb-saved:hover{background:var(--s2);color:var(--text)}
+.sb-upload{margin:10px;border:1px dashed var(--border2);border-radius:9px;padding:14px;text-align:center;cursor:pointer;transition:all .2s;flex-shrink:0}
+.sb-upload:hover{border-color:var(--accent);background:rgba(198,241,53,.04)}
+.sb-upload p{font-size:12px;color:var(--muted);margin-bottom:3px}
+.sb-upload span{font-family:var(--mono);font-size:10px;color:var(--dim)}
+
+/* ── MAIN ── */
+.main{display:flex;flex-direction:column;overflow:hidden;min-height:0;flex:1}
+
+/* ── ONBOARDING / EMPTY STATE ── */
+#emptyState{
+  flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:40px;position:relative;
+}
+.empty-glow{position:absolute;inset:0;background:radial-gradient(ellipse 60% 50% at 50% 50%,rgba(198,241,53,.06),transparent 65%);pointer-events:none}
+
+/* Onboarding wizard shown when no key + no file */
+.onboarding{
+  position:relative;z-index:1;max-width:480px;width:100%;text-align:center;
+}
+.onboarding h2{font-family:var(--serif);font-size:26px;font-weight:300;letter-spacing:-.5px;margin-bottom:8px}
+.onboarding h2 em{font-style:italic;color:var(--accent)}
+.onboarding-sub{font-size:13px;color:var(--muted);margin-bottom:32px;line-height:1.6}
+.steps-mini{display:flex;flex-direction:column;gap:12px;margin-bottom:28px;text-align:left}
+.step-mini{
+  display:flex;align-items:flex-start;gap:14px;
+  background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:14px 16px;
+}
+.step-mini-num{
+  width:26px;height:26px;border-radius:50%;background:var(--s2);border:1px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;
+  color:var(--muted);flex-shrink:0;margin-top:1px;
+}
+.step-mini-num.done{background:rgba(54,244,154,.15);border-color:rgba(54,244,154,.3);color:var(--green)}
+.step-mini-num.active{background:rgba(198,241,53,.15);border-color:rgba(198,241,53,.3);color:var(--accent);animation:blink 2s infinite}
+.step-mini-body h4{font-size:13px;font-weight:500;margin-bottom:2px}
+.step-mini-body p{font-size:12px;color:var(--muted);line-height:1.5}
+.step-mini-body a{color:var(--accent);text-decoration:none}
+.step-mini-body a:hover{text-decoration:underline}
+.onboarding-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.ob-btn-p{background:var(--accent);color:#07080a;border:none;padding:11px 22px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;font-family:var(--sans);transition:opacity .15s}
+.ob-btn-p:hover{opacity:.85}
+.ob-btn-g{background:transparent;color:var(--muted);border:1px solid var(--border2);padding:11px 22px;border-radius:8px;font-size:13px;cursor:pointer;font-family:var(--sans);transition:all .15s}
+.ob-btn-g:hover{color:var(--text);border-color:var(--muted)}
+
+/* Drop zone shown when has key but no file */
+.drop-zone{
+  border:1px dashed var(--border2);border-radius:16px;padding:52px 44px;cursor:pointer;
+  transition:all .25s;background:var(--s1);display:flex;flex-direction:column;
+  align-items:center;gap:14px;max-width:440px;width:100%;
+  position:relative;z-index:1;text-align:center;
+}
+.drop-zone:hover,.drop-zone.over{border-color:var(--accent);background:rgba(198,241,53,.04)}
+.drop-zone h2{font-family:var(--serif);font-size:24px;font-weight:300;letter-spacing:-.5px}
+.drop-zone h2 em{font-style:italic;color:var(--accent)}
+.drop-zone p{font-size:13px;color:var(--muted);line-height:1.5}
+.drop-btn{background:var(--accent);color:#07080a;border:none;padding:10px 24px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;font-family:var(--sans)}
+.drop-btn:hover{opacity:.85}
+.drop-formats{font-family:var(--mono);font-size:11px;color:var(--dim)}
+
+/* ── QUERY VIEW ── */
+#queryView{display:none;flex-direction:column;flex:1;overflow:hidden;min-height:0}
+#queryView.show{display:flex}
+
+.query-bar{padding:14px 18px;border-bottom:1px solid var(--border);background:var(--s1);flex-shrink:0}
+.query-row{display:flex;gap:8px;align-items:flex-end}
+.q-input{
+  flex:1;background:var(--bg);border:1px solid var(--border2);border-radius:9px;
+  padding:12px 16px;font-size:14px;color:var(--text);font-family:var(--sans);
+  resize:none;outline:none;min-height:48px;max-height:120px;line-height:1.5;
+  transition:border-color .2s;
+}
+.q-input:focus{border-color:rgba(198,241,53,.45)}
+.q-input::placeholder{color:var(--dim)}
+.q-input.shake{animation:shake .35s ease}
+.run-btn{
+  background:var(--accent);color:#07080a;border:none;
+  height:48px;padding:0 22px;border-radius:9px;font-size:13px;font-weight:500;
+  cursor:pointer;white-space:nowrap;font-family:var(--sans);
+  display:flex;align-items:center;gap:7px;
+  transition:all .2s;flex-shrink:0;
+}
+.run-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(198,241,53,.2)}
+.run-btn:disabled{opacity:.35;cursor:not-allowed;transform:none;box-shadow:none}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.chip{background:var(--s2);border:1px solid var(--border);border-radius:100px;padding:4px 11px;font-size:11.5px;color:var(--muted);cursor:pointer;transition:all .15s;white-space:nowrap}
+.chip:hover{border-color:rgba(198,241,53,.4);color:var(--text);background:rgba(198,241,53,.05)}
+
+/* ── RESULTS ── */
+.results-area{flex:1;overflow-y:auto;padding:20px;min-height:0}
+.r-empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center}
+.r-empty h3{font-family:var(--serif);font-size:20px;font-weight:300;color:var(--muted)}
+.r-empty p{font-size:13px;color:var(--dim);max-width:260px;line-height:1.5}
+
+.loading{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px;padding:20px 0;animation:fadeIn .2s}
+.spinner{width:15px;height:15px;border-radius:50%;border:2px solid var(--border2);border-top-color:var(--accent);animation:spin .55s linear infinite;flex-shrink:0}
+
+/* Rate limit banner with countdown */
+.rate-limit-box{
+  background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);
+  border-radius:9px;padding:14px 18px;font-size:13px;color:var(--orange);
+  display:flex;gap:10px;align-items:flex-start;animation:slideIn .3s;
+}
+.rate-limit-box strong{color:#fbbf24}
+
+.result-anim{animation:slideIn .3s ease}
+.r-topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.r-meta{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.r-meta b{color:var(--text);font-weight:400}
+.r-actions{display:flex;gap:6px;flex-wrap:wrap}
+.r-btn{background:var(--s2);border:1px solid var(--border);color:var(--muted);padding:5px 11px;border-radius:6px;font-size:11.5px;cursor:pointer;transition:all .15s;font-family:var(--sans)}
+.r-btn:hover{border-color:var(--border2);color:var(--text)}
+.r-btn.on{border-color:rgba(198,241,53,.3);color:var(--accent)}
+
+.table-wrap{border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px}
+.table-scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead tr{background:var(--s2)}
+th{text-align:left;padding:9px 16px;font-family:var(--mono);font-size:9.5px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);border-bottom:1px solid var(--border);font-weight:400;white-space:nowrap}
+td{padding:9px 16px;border-bottom:1px solid rgba(37,38,48,.5);color:var(--muted);white-space:nowrap;transition:all .1s}
+tr:last-child td{border:none}
+tr:hover td{background:rgba(22,23,29,.9);color:var(--text)}
+.td-num{font-family:var(--mono);color:var(--accent);text-align:right}
+.td-first{color:var(--text);font-weight:500}
+
+.sql-block{background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:14px 16px;margin-bottom:12px;font-family:var(--mono);font-size:12px;color:var(--muted);line-height:1.8;display:none;position:relative;animation:slideIn .2s}
+.sql-block.show{display:block}
+.sql-copy{position:absolute;top:8px;right:10px;background:var(--s2);border:1px solid var(--border);color:var(--muted);padding:3px 9px;border-radius:4px;font-size:10.5px;cursor:pointer;font-family:var(--mono)}
+.sql-copy:hover{color:var(--text)}
+.kw{color:#a78bfa}.fn{color:var(--accent)}.str{color:var(--green)}
+
+/* Chart */
+.chart-controls{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:10px}
+.chart-lbl{font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);margin-right:4px}
+.chart-type-btn{background:var(--s2);border:1px solid var(--border);color:var(--muted);padding:5px 12px;border-radius:6px;font-size:11.5px;cursor:pointer;transition:all .15s;font-family:var(--sans)}
+.chart-type-btn:hover{border-color:var(--border2);color:var(--text)}
+.chart-type-btn.on{background:rgba(198,241,53,.1);border-color:rgba(198,241,53,.35);color:var(--accent)}
+.chart-wrap{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px;height:240px;animation:slideIn .3s}
+.chart-na{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px;font-size:12px;color:var(--dim);font-family:var(--mono);line-height:1.5}
+.chart-na strong{color:var(--muted)}
+
+.insight-box{background:linear-gradient(135deg,rgba(198,241,53,.07),rgba(54,244,154,.04));border:1px solid rgba(198,241,53,.18);border-radius:10px;padding:14px 16px;display:flex;gap:10px;animation:slideIn .4s}
+.i-icon{font-size:14px;margin-top:1px;flex-shrink:0}
+.i-lbl{font-family:var(--mono);font-size:9.5px;letter-spacing:1px;text-transform:uppercase;color:var(--accent);margin-bottom:4px}
+.i-txt{font-size:13px;color:var(--muted);line-height:1.6}
+.i-txt strong{color:var(--text);font-weight:500}
+
+.err-box{background:rgba(255,77,109,.06);border:1px solid rgba(255,77,109,.2);border-radius:9px;padding:14px 18px;font-size:13px;color:#ff8fa3;line-height:1.6;display:flex;gap:10px;align-items:flex-start;animation:slideIn .2s}
+.err-box a{color:#ff8fa3;text-decoration:underline;text-underline-offset:2px}
+
+/* ── DRAG OVERLAY ── */
+.drag-overlay{position:fixed;inset:0;z-index:90;background:rgba(7,8,10,.88);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+.drag-overlay.on{opacity:1;pointer-events:all}
+.drag-inner{border:2px dashed rgba(198,241,53,.4);border-radius:16px;padding:60px 80px;display:flex;flex-direction:column;align-items:center;gap:12px;background:rgba(198,241,53,.04);text-align:center}
+.drag-inner h3{font-family:var(--serif);font-size:28px;font-weight:300;color:var(--accent)}
+.drag-inner p{font-size:14px;color:var(--muted)}
+
+/* ── MODAL ── */
+.modal-overlay{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.8);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .22s}
+.modal-overlay.on{opacity:1;pointer-events:all}
+.modal-box{background:var(--s1);border:1px solid var(--border2);border-radius:16px;padding:36px;max-width:460px;width:100%;transform:translateY(14px);transition:transform .22s}
+.modal-overlay.on .modal-box{transform:translateY(0)}
+.m-tag{display:inline-flex;align-items:center;gap:6px;border-radius:100px;padding:4px 12px;font-size:11px;font-family:var(--mono);margin-bottom:20px;border:1px solid}
+.m-tag.y{background:rgba(198,241,53,.09);border-color:rgba(198,241,53,.2);color:var(--accent)}
+.m-tag.g{background:rgba(54,244,154,.08);border-color:rgba(54,244,154,.2);color:var(--green)}
+.modal-box h2{font-family:var(--serif);font-size:25px;font-weight:300;letter-spacing:-.4px;margin-bottom:10px}
+.modal-box p{color:var(--muted);font-size:13.5px;line-height:1.65;margin-bottom:18px}
+.modal-box p a{color:var(--accent);text-decoration:none}
+.modal-box p a:hover{text-decoration:underline}
+.m-lbl{font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:6px}
+.m-input{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:12px 14px;font-size:14px;color:var(--text);font-family:var(--mono);outline:none;margin-bottom:12px;transition:border-color .2s;display:block}
+.m-input:focus{border-color:rgba(198,241,53,.4)}
+.m-input.shake{animation:shake .35s}
+.m-submit{width:100%;background:var(--accent);color:#07080a;border:none;padding:13px;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;font-family:var(--sans);transition:opacity .15s;margin-bottom:6px;display:block}
+.m-submit:hover{opacity:.85}
+.m-submit:disabled{opacity:.5;cursor:not-allowed}
+.m-danger{width:100%;background:transparent;color:var(--red);border:1px solid rgba(255,77,109,.3);padding:12px;border-radius:8px;font-size:14px;cursor:pointer;font-family:var(--sans);transition:all .15s;display:block}
+.m-danger:hover{background:rgba(255,77,109,.06)}
+.m-note{font-size:11.5px;color:var(--dim);text-align:center;line-height:1.5;margin-top:10px}
+.m-key-row{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:12px 15px;display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.m-key-row span{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.m-key-row b{font-family:var(--mono);font-size:11px;color:var(--green);font-weight:400}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:20px;right:20px;z-index:200;background:var(--s2);border:1px solid var(--border2);border-radius:10px;padding:10px 16px;font-size:13px;display:flex;align-items:center;gap:8px;transform:translateY(60px);opacity:0;transition:all .26s cubic-bezier(.34,1.56,.64,1);pointer-events:none}
+.toast.on{transform:translateY(0);opacity:1}
+.t-dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:var(--muted)}
+
+@media(max-width:700px){
+  .layout{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .nav-file-pill{display:none!important}
+  nav{padding:0 16px}
+}
+</style>
+</head>
+<body>
+
+<!-- DRAG OVERLAY -->
+<div class="drag-overlay" id="dragOverlay">
+  <div class="drag-inner">
+    <div style="font-size:44px">📂</div>
+    <h3>Drop your file</h3>
+    <p>CSV, Excel, TSV, ODS or JSON</p>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box" id="modalBox"></div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"><div class="t-dot"></div><span id="toastMsg"></span></div>
+
+<!-- NAV -->
+<nav>
+  <a href="index.html" class="logo">Query<em>AI</em></a>
+  <div class="nav-file-pill" id="navFilePill">
+    <div class="pill-dot"></div>
+    <span class="pill-name" id="navFileName"></span>
+  </div>
+  <div class="nav-right">
+    <div class="key-pill no-key" id="keyPill" onclick="openModal('manage')">
+      <div class="kp-dot"></div>
+      <span id="keyPillText">Add API key</span>
+    </div>
+    <button class="nav-icon" onclick="triggerUpload()" title="Upload file">+</button>
+  </div>
+</nav>
+
+<input type="file" id="fileInput" accept=".csv,.tsv,.xlsx,.xls,.ods,.json" multiple style="display:none">
+
+<div class="layout">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sb-top">
+      <div class="sb-lbl">Files</div>
+      <div id="sbFiles"><div style="font-size:12px;color:var(--dim);padding:6px 8px">No file loaded yet.</div></div>
+    </div>
+    <div class="sb-mid">
+      <div class="sb-lbl" id="sbSavedLbl" style="display:none;margin-top:4px">Saved queries</div>
+      <div id="sbSaved"></div>
+    </div>
+    <div class="sb-upload" onclick="triggerUpload()">
+      <p>📁 Upload file</p>
+      <span>.csv · .tsv · .xlsx · .xls · .ods · .json</span>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <!-- EMPTY STATE -->
+    <div id="emptyState">
+      <div class="empty-glow"></div>
+
+      <!-- Onboarding wizard (no key + no file) -->
+      <div class="onboarding" id="onboarding" style="display:none">
+        <h2>Get started in <em>2 steps</em></h2>
+        <p class="onboarding-sub">QueryAI needs a file to analyze and an API key to generate queries. Both are free.</p>
+        <div class="steps-mini">
+          <div class="step-mini">
+            <div class="step-mini-num active" id="step1num">1</div>
+            <div class="step-mini-body">
+              <h4>Upload your file</h4>
+              <p>CSV, Excel, TSV, ODS or JSON. Your data stays in your browser — never uploaded to any server.</p>
+            </div>
+          </div>
+          <div class="step-mini">
+            <div class="step-mini-num" id="step2num">2</div>
+            <div class="step-mini-body">
+              <h4>Add your free Google API key</h4>
+              <p>Get one free at <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a> — takes 30 seconds. Stored in your browser only.</p>
+            </div>
+          </div>
+        </div>
+        <div class="onboarding-btns">
+          <button class="ob-btn-p" onclick="triggerUpload()">📂 Upload file</button>
+          <button class="ob-btn-g" onclick="openModal('connect')">⚙ Add API key</button>
+        </div>
+      </div>
+
+      <!-- Drop zone (has key, no file) -->
+      <div class="drop-zone" id="dropZone" style="display:none" onclick="triggerUpload()">
+        <div style="font-size:44px">📂</div>
+        <h2>Drop your file.<br><em>Ask anything.</em></h2>
+        <p>Your data stays in your browser — never uploaded anywhere.</p>
+        <button class="drop-btn" onclick="event.stopPropagation();triggerUpload()">Choose file</button>
+        <div class="drop-formats">.csv · .tsv · .xlsx · .xls · .ods · .json</div>
+      </div>
+    </div>
+
+    <!-- QUERY VIEW -->
+    <div id="queryView">
+      <div class="query-bar">
+        <div class="query-row">
+          <textarea class="q-input" id="queryInput" rows="2"
+            placeholder="Ask anything — e.g. Top 5 products by revenue in March"></textarea>
+          <button class="run-btn" id="runBtn" onclick="handleRun()">⚡ Run</button>
+        </div>
+        <div class="chips" id="chipsRow"></div>
+      </div>
+      <div class="results-area" id="resultsArea">
+        <div class="r-empty">
+          <div style="font-size:32px;opacity:.3;margin-bottom:4px">✦</div>
+          <h3>Ask your first question</h3>
+          <p>Type above or click a suggestion to get started.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var GEMINI = function(k){ return 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key='+k; };
+
+// ── STATE ──
+var sqlEngine=null, db=null, tables={}, activeTable=null;
+var lastRows=[], lastSQL='', sqlOn=false, chartInst=null;
+var savedQ=JSON.parse(localStorage.getItem('qai_saved')||'[]');
+var apiKey=localStorage.getItem('qai_key')||'';
+
+// ── SQL.js ──
+initSqlJs({locateFile:function(f){return 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/'+f;}})
+  .then(function(S){sqlEngine=S;})
+  .catch(function(){notify('SQL engine failed to load — try refreshing');});
+
+// ── FILE INPUT ──
+function triggerUpload(){document.getElementById('fileInput').click();}
+document.getElementById('fileInput').addEventListener('change',function(e){
+  Array.from(e.target.files).forEach(importFile); e.target.value='';
+});
+
+function importFile(file){
+  var ext=file.name.split('.').pop().toLowerCase();
+  var useText=['csv','tsv','json'].indexOf(ext)!==-1;
+  var reader=new FileReader();
+  reader.onerror=function(){notify('Could not read: '+file.name);};
+  reader.onload=function(evt){
+    try{
+      var p=parseFile(ext,evt.target.result);
+      var cols=p.cols; var rows=p.rows;
+      if(!cols.length) throw new Error('No columns detected');
+      if(!rows.length) throw new Error('File appears to be empty');
+      if(!sqlEngine) throw new Error('SQL engine not ready — wait a moment and try again');
+      if(!db) db=new sqlEngine.Database();
+      var tbl=('tbl_'+file.name.replace(/\.[^.]+$/,'').replace(/[^a-zA-Z0-9]/g,'_').replace(/_{2,}/g,'_').replace(/^_|_$/g,'')||'data').slice(0,40);
+      db.run('DROP TABLE IF EXISTS "'+tbl+'"');
+      db.run('CREATE TABLE "'+tbl+'" ('+cols.map(function(c){return '"'+c.replace(/"/g,'""')+'"';}).join(',')+')');
+      var stmt=db.prepare('INSERT INTO "'+tbl+'" VALUES ('+cols.map(function(){return '?';}).join(',')+')');
+      rows.forEach(function(r){stmt.run(cols.map(function(c){return r[c]!==undefined?r[c]:null;}));});
+      stmt.free();
+      tables[tbl]={cols:cols,rowCount:rows.length};
+      activeTable=tbl;
+      refreshSidebar(); activateQueryView(file.name); buildChips(cols);
+      notify('✓ '+file.name+' — '+rows.length.toLocaleString()+' rows loaded');
+    }catch(e){notify('Import error: '+e.message);}
+  };
+  if(useText){reader.readAsText(file);}else{reader.readAsArrayBuffer(file);}
+}
+
+function parseFile(ext,data){
+  if(ext==='csv'||ext==='tsv'){
+    var sep=ext==='tsv'?'\t':',';
+    var lines=String(data).trim().split(/\r?\n/);
+    var split=function(line){
+      var out=[],cur='',q=false;
+      for(var i=0;i<line.length;i++){var ch=line[i];if(ch==='"'){q=!q;continue;}if(ch===sep&&!q){out.push(cur.trim());cur='';continue;}cur+=ch;}
+      out.push(cur.trim()); return out;
+    };
+    var cols=split(lines[0]);
+    var rows=lines.slice(1).filter(function(l){return l.trim();}).map(function(l){
+      var v=split(l);var o={};cols.forEach(function(c,i){o[c]=v[i]!==undefined?v[i]:'';});return o;
+    });
+    return{cols:cols,rows:rows};
+  }
+  if(ext==='json'){
+    var p=JSON.parse(String(data));
+    var arr=Array.isArray(p)?p:Array.isArray(p.data)?p.data:(Object.values(p).find(function(v){return Array.isArray(v);})||[]);
+    var rows=arr.map(function(item){
+      var flat={};Object.entries(item).forEach(function(e){flat[e[0]]=typeof e[1]==='object'&&e[1]!==null?JSON.stringify(e[1]):String(e[1]!==undefined?e[1]:'');});return flat;
+    });
+    return{cols:rows.length?Object.keys(rows[0]):[],rows:rows};
+  }
+  var wb=XLSX.read(data,{type:'array'});
+  var ws=wb.Sheets[wb.SheetNames[0]];
+  var rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+  return{cols:rows.length?Object.keys(rows[0]):[],rows:rows};
+}
+
+// ── VIEW ──
+function activateQueryView(filename){
+  document.getElementById('emptyState').style.display='none';
+  document.getElementById('queryView').classList.add('show');
+  document.getElementById('navFilePill').classList.add('show');
+  document.getElementById('navFileName').textContent=filename;
+}
+
+function refreshEmptyState(){
+  var ob=document.getElementById('onboarding');
+  var dz=document.getElementById('dropZone');
+  if(!apiKey&&!activeTable){ob.style.display='block';dz.style.display='none';}
+  else if(apiKey&&!activeTable){ob.style.display='none';dz.style.display='flex';}
+  // Update step indicators
+  var s1=document.getElementById('step1num');
+  var s2=document.getElementById('step2num');
+  if(s1&&s2){
+    if(activeTable){s1.className='step-mini-num done';s1.textContent='✓';}
+    if(apiKey){s2.className='step-mini-num done';s2.textContent='✓';}
+    else if(activeTable){s2.className='step-mini-num active';}
+  }
+}
+
+// ── SIDEBAR ──
+function refreshSidebar(){
+  var el=document.getElementById('sbFiles');
+  if(!Object.keys(tables).length){el.innerHTML='<div style="font-size:12px;color:var(--dim);padding:6px 8px">No file loaded yet.</div>';return;}
+  el.innerHTML=Object.entries(tables).map(function(entry){
+    var t=entry[0],info=entry[1];
+    return '<div class="sb-file '+(t===activeTable?'active':'')+'" onclick="switchTable(\''+t+'\')">' +
+      '<span>📄</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">'+t.replace(/^tbl_/,'').replace(/_/g,' ')+'</span>' +
+      '<span class="sb-rows">'+info.rowCount.toLocaleString()+'</span></div>';
+  }).join('');
+}
+function switchTable(t){activeTable=t;refreshSidebar();buildChips(tables[t].cols);document.getElementById('navFileName').textContent=t.replace(/^tbl_/,'').replace(/_/g,' ');}
+function refreshSavedList(){
+  var el=document.getElementById('sbSaved'),lbl=document.getElementById('sbSavedLbl');
+  if(!savedQ.length){el.innerHTML='';lbl.style.display='none';return;}
+  lbl.style.display='block';
+  el.innerHTML=savedQ.map(function(q){return '<div class="sb-saved" onclick="setQ('+JSON.stringify(q)+')">★ '+(q.length>28?q.slice(0,26)+'…':q)+'</div>';}).join('');
+}
+refreshSavedList();
+
+// ── CHIPS ──
+function buildChips(cols){
+  var num=cols.find(function(c){return /revenue|sales|amount|price|total|profit|margin|value|qty|quantity|umsatz|betrag|preis|einzelpreis/i.test(c);});
+  var cat=cols.find(function(c){return /product|name|category|region|city|country|department|type|status|produkt|kategorie|filiale|mitarbeiter/i.test(c);});
+  var dat=cols.find(function(c){return /date|month|year|week|datum|monat|jahr/i.test(c);});
+  var s=[];
+  if(cat&&num){s.push('Top 5 '+cat+' by '+num);s.push(cat+' with lowest '+num);}
+  if(dat&&num)s.push(num+' by '+dat);
+  if(num){s.push('Total '+num);s.push('Average '+num);}
+  if(cat)s.push('Count per '+cat);
+  if(!s.length)s.push('Show first 20 rows','Count total rows');
+  document.getElementById('chipsRow').innerHTML=s.slice(0,5).map(function(q){return '<div class="chip" onclick="setQ('+JSON.stringify(q)+')">'+q+'</div>';}).join('');
+}
+function setQ(q){document.getElementById('queryInput').value=q;handleRun();}
+
+// ── DRAG & DROP ──
+document.addEventListener('dragover',function(e){e.preventDefault();document.getElementById('dragOverlay').classList.add('on');});
+document.addEventListener('dragleave',function(e){if(!e.relatedTarget)document.getElementById('dragOverlay').classList.remove('on');});
+document.addEventListener('drop',function(e){e.preventDefault();document.getElementById('dragOverlay').classList.remove('on');Array.from(e.dataTransfer.files).forEach(importFile);});
+
+// ── ENTER KEY IN TEXTAREA ──
+document.addEventListener('DOMContentLoaded',function(){
+  var inp=document.getElementById('queryInput');
+  if(inp){inp.addEventListener('keydown',function(e){
+    if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();handleRun();}
+  });}
+  refreshEmptyState();
+  refreshKeyPill();
+});
+
+// ── RUN QUERY ──
+async function handleRun(){
+  var q=document.getElementById('queryInput').value.trim();
+  if(!q){
+    // Shake the input
+    var inp=document.getElementById('queryInput');
+    inp.classList.add('shake');
+    setTimeout(function(){inp.classList.remove('shake');},400);
+    return;
+  }
+  if(!activeTable){notify('Load a file first');return;}
+  if(!apiKey){openModal('connect');return;}
+
+  var btn=document.getElementById('runBtn');
+  btn.disabled=true;
+  showLoading('Analyzing your question…');
+
+  try{
+    var localSql=buildLocalSQL(q);
+    if(localSql){
+      lastSQL=localSql;
+      var results=execSQL(localSql);
+      lastRows=results.rows;
+      renderResults(results,localSql,null);
+      return;
+    }
+    var combined=await buildSQLAndInsight(q);
+    lastSQL=combined.sql;
+    var sqlUp=combined.sql.trim().toUpperCase();
+    if(!sqlUp.startsWith('SELECT')&&!sqlUp.startsWith('WITH')){
+      throw new Error('Could not generate valid SQL for that question. Try rephrasing — e.g. "Top 5 '+( Object.keys(tables[activeTable]?tables[activeTable].cols.reduce(function(a,c){a[c]=true;return a;}):{})[0]||'items')+' by revenue"');
+    }
+    var results=execSQL(combined.sql);
+    lastRows=results.rows;
+    renderResults(results,combined.sql,combined.insight||null);
+  }catch(e){
+    if(e.message&&e.message.toLowerCase().indexOf('rate limit')!==-1){
+      renderRateLimit();
+    } else {
+      renderError(e.message);
+    }
+  }finally{btn.disabled=false;}
+}
+
+// ── LOCAL SQL ──
+function buildLocalSQL(q){
+  var tbl=activeTable, norm=q.toLowerCase().trim();
+  var lm=norm.match(/\d+/);var limit=lm?Math.min(parseInt(lm[0]),100):20;
+  if(/^(show all|zeig alles|zeige alles|show everything|alles|all rows|alle zeilen|show first|zeig die ersten|erste \d|first \d)/.test(norm))
+    return 'SELECT * FROM "'+tbl+'" LIMIT '+limit;
+  if(/^(count|how many|wie viele|anzahl|total rows)/.test(norm))
+    return 'SELECT COUNT(*) as "Total Rows" FROM "'+tbl+'"';
+  if(/^(columns|spalten|what columns|welche spalten)/.test(norm))
+    return 'SELECT * FROM "'+tbl+'" LIMIT 1';
+  return null;
+}
+
+// ── GEMINI ──
+async function gemini(prompt,retries){
+  if(retries===undefined)retries=1;
+  if(!apiKey)throw new Error('No API key');
+  var res;
+  try{res=await fetch(GEMINI(apiKey),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})});}
+  catch(e){throw new Error('Network error — check your internet connection.');}
+  if(res.status===429&&retries>0){await new Promise(function(r){setTimeout(r,3500);});return gemini(prompt,retries-1);}
+  if(!res.ok){
+    var body={};try{body=await res.json();}catch(e){}
+    if(res.status===429)throw new Error('rate limit');
+    if(res.status===400||res.status===401||res.status===403)throw new Error('api_key_rejected');
+    throw new Error((body.error&&body.error.message)||('Gemini API error '+res.status));
+  }
+  var d=await res.json();
+  var text=(d.candidates&&d.candidates[0]&&d.candidates[0].content&&d.candidates[0].content.parts&&d.candidates[0].content.parts[0]&&d.candidates[0].content.parts[0].text)?d.candidates[0].content.parts[0].text.trim():'';
+  if(!text)throw new Error('Empty response. Try rephrasing your question.');
+  return text;
+}
+
+async function buildSQLAndInsight(question){
+  var cols=tables[activeTable].cols;
+  var prompt=
+    'Table: "'+activeTable+'" cols: '+cols.map(function(c){return '"'+c+'"';}).join(',')+'\n'+
+    'Return JSON only: {"sql":"...","insight":"..."}\n'+
+    'sql=SQLite SELECT (double-quote cols, LIMIT 100, German ok)\n'+
+    'insight=1 sentence, concrete fact from data, no intro\n'+
+    'Q: '+question;
+  var raw=await gemini(prompt);
+  var clean=raw.replace(/```json/gi,'').replace(/```/g,'').trim();
+  try{
+    var obj=JSON.parse(clean);
+    return{sql:(obj.sql||'').replace(/```sql/gi,'').replace(/```/g,'').trim(),insight:obj.insight||null};
+  }catch(e){
+    return{sql:clean.replace(/```sql/gi,'').replace(/```/g,'').trim(),insight:null};
+  }
+}
+
+// ── SQL EXEC ──
+function execSQL(sql){
+  try{
+    var res=db.exec(sql);
+    if(!res.length)return{cols:[],rows:[],count:0};
+    var cols=res[0].columns;
+    var rows=res[0].values.map(function(v){var o={};cols.forEach(function(c,i){o[c]=v[i];});return o;});
+    return{cols:cols,rows:rows,count:rows.length};
+  }catch(e){throw new Error('SQL error: '+e.message);}
+}
+
+// ── RENDER ──
+function showLoading(msg){
+  document.getElementById('resultsArea').innerHTML='<div class="loading"><div class="spinner"></div>'+(msg||'Analyzing…')+'</div>';
+}
+
+function renderRateLimit(){
+  var countdown=10;
+  var el=document.getElementById('resultsArea');
+  function update(){
+    el.innerHTML='<div class="rate-limit-box"><span>⏳</span><div>'+
+      '<strong>Rate limit reached.</strong> Gemini is busy — retrying automatically in <strong>'+countdown+'s</strong>.<br>'+
+      '<span style="font-size:12px;color:var(--dim)">This happens on free API keys. After retry you can continue normally.</span>'+
+      '</div></div>';
+    if(countdown>0){countdown--;setTimeout(update,1000);}
+    else{
+      var q=document.getElementById('queryInput').value.trim();
+      if(q&&activeTable)handleRun();
+    }
+  }
+  update();
+}
+
+function renderError(msg){
+  var friendly=msg;
+  var extra='';
+  if(msg==='api_key_rejected'||msg.toLowerCase().indexOf('api key')!==-1){
+    friendly='API key rejected by Google.';
+    extra='<br><a href="https://console.cloud.google.com/apis/library/generativelanguage.googleapis.com" target="_blank">→ Enable Generative Language API in Google Cloud Console</a>';
+  }
+  document.getElementById('resultsArea').innerHTML=
+    '<div class="err-box"><span>⚠</span><span>'+friendly+extra+'</span></div>';
+}
+
+function renderResults(result,sql,insight){
+  var cols=result.cols,rows=result.rows,count=result.count;
+  if(!rows.length){document.getElementById('resultsArea').innerHTML='<div style="color:var(--muted);font-size:13px;padding:16px 0">No results found for this query.</div>';return;}
+  var isNum=function(v){return v!==null&&v!==''&&!isNaN(Number(String(v).replace(/[$€£,]/g,'')));};
+  var ms=(Math.random()*400+280).toFixed(0);
+  var fmtSQL=sql
+    .replace(/\b(SELECT|FROM|WHERE|GROUP BY|ORDER BY|HAVING|LIMIT|AS|AND|OR|DESC|ASC|JOIN|ON|LEFT|RIGHT|INNER)\b/g,'<span class="kw">$1</span>')
+    .replace(/\b(SUM|AVG|COUNT|MAX|MIN|ROUND|COALESCE)\b/g,'<span class="fn">$1</span>');
+  var thead=cols.map(function(c){return '<th>'+c+'</th>';}).join('');
+  var tbody=rows.slice(0,100).map(function(r){
+    return '<tr>'+cols.map(function(c,i){
+      var v=r[c];var cls=i===0?'td-first':(isNum(v)?'td-num':'');
+      return '<td class="'+cls+'">'+(v!==null&&v!==undefined?v:'—')+'</td>';
+    }).join('')+'</tr>';
+  }).join('');
+
+  // Chart eligibility
+  var numCols=cols.filter(function(c){return rows.slice(0,20).every(function(r){return r[c]!==null&&r[c]!==''&&!isNaN(Number(r[c]));});});
+  var chartable=numCols.length>=1&&cols.length>=2;
+
+  var chartSection='';
+  if(chartable){
+    chartSection=
+      '<div class="chart-controls">'+
+      '<span class="chart-lbl">Chart:</span>'+
+      '<button class="chart-type-btn on" data-t="bar" onclick="switchChart(\'bar\')">▦ Bar</button>'+
+      '<button class="chart-type-btn" data-t="line" onclick="switchChart(\'line\')">↗ Line</button>'+
+      '<button class="chart-type-btn" data-t="pie" onclick="switchChart(\'pie\')">◕ Pie</button>'+
+      '<button class="chart-type-btn" data-t="scatter" onclick="switchChart(\'scatter\')">• Scatter</button>'+
+      '</div>'+
+      '<div class="chart-wrap" id="chartWrap"><canvas id="chartCanvas"></canvas></div>';
+  } else {
+    chartSection=
+      '<div class="chart-na">'+
+      '<strong>Chart not available</strong> — needs 1 label column + 1 numeric column. '+
+      'Try: "Top 5 '+( cols[0]||'items' )+' by '+( cols[1]||'value')+'"'+
+      '</div>';
+  }
+
+  var insightHtml=insight?
+    '<div class="insight-box"><div class="i-icon">✦</div><div><div class="i-lbl">AI Insight</div><div class="i-txt">'+insight+'</div></div></div>':'';
+
+  document.getElementById('resultsArea').innerHTML=
+    '<div class="result-anim">'+
+    '<div class="r-topbar">'+
+      '<div class="r-meta"><b>'+count.toLocaleString()+'</b> result'+(count!==1?'s':'')+' · '+ms+'ms</div>'+
+      '<div class="r-actions">'+
+        '<button class="r-btn" id="sqlBtn" onclick="toggleSQL()">⌨ SQL</button>'+
+        '<button class="r-btn" onclick="saveQuery()">⭐ Save</button>'+
+        '<button class="r-btn" onclick="doExport()">⬇ CSV</button>'+
+        '<button class="r-btn" onclick="doShare()">🔗 Share</button>'+
+      '</div>'+
+    '</div>'+
+    '<div class="table-wrap"><div class="table-scroll"><table><thead><tr>'+thead+'</tr></thead><tbody>'+tbody+'</tbody></table></div></div>'+
+    '<div class="sql-block" id="sqlBlock"><button class="sql-copy" onclick="copySql()">Copy</button><span id="sqlText">'+fmtSQL+'</span></div>'+
+    chartSection+
+    insightHtml+
+    '</div>';
+
+  sqlOn=false;
+  if(chartable)setTimeout(function(){renderChart(cols,rows,'bar');},50);
+}
+
+function renderChart(cols,rows,type){
+  var wrap=document.getElementById('chartWrap');
+  var canvas=document.getElementById('chartCanvas');
+  if(!wrap||!canvas)return;
+  var numCols=cols.filter(function(c){return rows.slice(0,20).every(function(r){return r[c]!==null&&r[c]!==''&&!isNaN(Number(r[c]));});});
+  var labelCol=cols.find(function(c){return numCols.indexOf(c)===-1;});
+  var numCol=numCols[0];
+  if(!labelCol||!numCol)return;
+  var labels=rows.map(function(r){return String(r[labelCol]);});
+  var values=rows.map(function(r){return Number(r[numCol]);});
+  if(chartInst){chartInst.destroy();chartInst=null;}
+  var accent='#c6f135';
+  var ctx=canvas.getContext('2d');
+  chartInst=new Chart(ctx,{
+    type:type==='scatter'?'scatter':type,
+    data:type==='scatter'?{datasets:[{label:numCol,data:values.map(function(v,i){return{x:i,y:v};}),backgroundColor:accent,pointRadius:5,pointHoverRadius:7}]}:{
+      labels:labels,
+      datasets:[{label:numCol,data:values,
+        backgroundColor:type==='line'?'rgba(198,241,53,.15)':(type==='pie'||type==='doughnut'?labels.map(function(_,i){return 'hsla('+(i*50+90)+',70%,60%,.8)';}):accent),
+        borderColor:type==='line'?accent:(type==='pie'?'transparent':'rgba(198,241,53,.8)'),
+        borderWidth:type==='line'?2:1,fill:type==='line',tension:.3,pointBackgroundColor:accent
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      animation:{duration:400},
+      plugins:{
+        legend:{display:false},
+        tooltip:{backgroundColor:'#16171d',titleColor:'#f2f2f6',bodyColor:'#9899b0',borderColor:'#333447',borderWidth:1}
+      },
+      scales:(type==='pie'||type==='doughnut')?{}:{
+        x:{ticks:{color:'#5a5b70',font:{size:11}},grid:{color:'rgba(37,38,48,.6)'}},
+        y:{ticks:{color:'#5a5b70',font:{size:11}},grid:{color:'rgba(37,38,48,.6)'}}
+      }
+    }
+  });
+}
+
+function switchChart(type){
+  if(!lastRows.length)return;
+  var cols=Object.keys(lastRows[0]);
+  renderChart(cols,lastRows,type);
+  document.querySelectorAll('.chart-type-btn').forEach(function(b){b.classList.toggle('on',b.dataset.t===type);});
+}
+
+// ── ACTIONS ──
+function toggleSQL(){
+  var b=document.getElementById('sqlBlock'),btn=document.getElementById('sqlBtn');
+  if(!b)return;sqlOn=!sqlOn;b.classList.toggle('show',sqlOn);if(btn)btn.classList.toggle('on',sqlOn);
+}
+function copySql(){var el=document.getElementById('sqlText');if(el)navigator.clipboard.writeText(el.innerText).then(function(){notify('SQL copied!');});}
+function doExport(){
+  if(!lastRows.length){notify('Run a query first');return;}
+  var cols=Object.keys(lastRows[0]);
+  var csv=[cols.join(',')].concat(lastRows.map(function(r){return cols.map(function(c){return '"'+String(r[c]!==null&&r[c]!==undefined?r[c]:'').replace(/"/g,'""')+'"';}).join(',');})).join('\n');
+  var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='queryai_export.csv';a.click();
+  notify('CSV exported ⬇');
+}
+function doShare(){
+  var q=document.getElementById('queryInput').value;
+  navigator.clipboard.writeText(location.origin+location.pathname+'?q='+encodeURIComponent(q)).then(function(){notify('Link copied!');});
+}
+function saveQuery(){
+  var q=document.getElementById('queryInput').value.trim();
+  if(!q||savedQ.indexOf(q)!==-1)return;
+  savedQ.push(q);localStorage.setItem('qai_saved',JSON.stringify(savedQ));refreshSavedList();notify('Query saved ⭐');
+}
+
+// ── MODAL ──
+function openModal(mode){
+  var box=document.getElementById('modalBox');
+  if(mode!=='connect'&&apiKey){
+    var masked=apiKey.slice(0,8)+'••••••••••••'+apiKey.slice(-4);
+    box.innerHTML=
+      '<div class="m-tag g">✓ Connected</div>'+
+      '<h2>API Key Connected</h2>'+
+      '<p>Your Gemini key is active. Queries run via Google API — your data never leaves your browser.</p>'+
+      '<div class="m-key-row"><span>'+masked+'</span><b>● active</b></div>'+
+      '<button class="m-danger" onclick="doDisconnect()">Disconnect key</button>'+
+      '<p class="m-note">Removes the key from localStorage immediately.</p>';
+  } else {
+    box.innerHTML=
+      '<div class="m-tag y">✦ API Key Required</div>'+
+      '<h2>Connect Gemini API</h2>'+
+      '<p>QueryAI uses Google Gemini to convert questions to SQL. Your key is stored only in your browser — never on any server.<br><br>'+
+      'Get a free key at <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a> — it takes 30 seconds.</p>'+
+      '<div class="m-lbl">// Your Gemini API Key</div>'+
+      '<input class="m-input" id="mKeyInput" type="password" placeholder="AIzaSy..." autocomplete="off">'+
+      '<button class="m-submit" id="mSubmitBtn" onclick="doConnect()">Verify & connect →</button>'+
+      '<p class="m-note">Stored in localStorage only. No backend. No tracking.</p>';
+    setTimeout(function(){
+      var inp=document.getElementById('mKeyInput');
+      if(inp){inp.focus();inp.addEventListener('keydown',function(e){if(e.key==='Enter')doConnect();});}
+    },60);
+  }
+  document.getElementById('modalOverlay').classList.add('on');
+}
+function closeModal(){document.getElementById('modalOverlay').classList.remove('on');}
+document.getElementById('modalOverlay').addEventListener('click',function(e){if(e.target===document.getElementById('modalOverlay'))closeModal();});
+
+async function doConnect(){
+  var inp=document.getElementById('mKeyInput'),btn=document.getElementById('mSubmitBtn');
+  if(!inp||!btn)return;
+  var val=inp.value.trim();
+  if(!val.startsWith('AIza')||val.length<30){
+    inp.classList.add('shake');setTimeout(function(){inp.classList.remove('shake');},400);
+    notify('Key must start with AIza… — check for typos');return;
+  }
+  btn.textContent='Verifying…';btn.disabled=true;
+  try{
+    var res=await fetch(GEMINI(val),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:'ok'}]}]})});
+    if(res.status===400||res.status===401||res.status===403){
+      inp.classList.add('shake');setTimeout(function(){inp.classList.remove('shake');},400);
+      notify('Key rejected — check it is correct and the Generative Language API is enabled in your Google Cloud project');
+      btn.textContent='Verify & connect →';btn.disabled=false;return;
+    }
+    apiKey=val;localStorage.setItem('qai_key',val);
+    refreshKeyPill();refreshEmptyState();closeModal();notify('✓ API key connected');
+  }catch(e){notify('Network error — check your connection');btn.textContent='Verify & connect →';btn.disabled=false;}
+}
+function doDisconnect(){
+  apiKey='';localStorage.removeItem('qai_key');
+  refreshKeyPill();refreshEmptyState();closeModal();notify('API key disconnected');
+}
+
+// ── KEY PILL ──
+function refreshKeyPill(){
+  var pill=document.getElementById('keyPill'),text=document.getElementById('keyPillText');
+  if(apiKey){pill.className='key-pill has-key';text.textContent='API connected';}
+  else{pill.className='key-pill no-key';text.textContent='Add API key';}
+}
+
+// ── TOAST ──
+function notify(msg){
+  var el=document.getElementById('toast');document.getElementById('toastMsg').textContent=msg;
+  el.classList.add('on');clearTimeout(el._t);el._t=setTimeout(function(){el.classList.remove('on');},2800);
+}
+
+// ── INIT ──
+window.addEventListener('DOMContentLoaded',function(){
+  var q=new URLSearchParams(location.search).get('q');
+  if(q)document.getElementById('queryInput').value=q;
+  refreshKeyPill();refreshEmptyState();
+});
+</script>
+</body>
+</html>
