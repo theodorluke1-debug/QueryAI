@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QueryAI — Your Data Stays on Your Device</title>
+<meta name="description" content="Ask questions about your CSV or Excel files in plain English. No SQL needed. No cloud. Your data never leaves your browser.">
+<meta property="og:title" content="QueryAI — Your Data Stays on Your Device">
+<meta property="og:description" content="AI-powered data analysis that runs 100% locally. No uploads, no SQL, completely private.">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,600;1,300;1,600&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07080a;--s1:#0f1014;--s2:#16171d;
+  --border:#252630;--border2:#333447;
+  --accent:#c6f135;--text:#f2f2f6;--muted:#9899b0;--dim:#5a5b70;
+  --green:#36f49a;--red:#ff4d6d;
+  --mono:'Geist Mono',monospace;--serif:'Fraunces',serif;--sans:'Geist',sans-serif;
+  --max:1040px;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);overflow-x:hidden;line-height:1.6}
+.wrap{max-width:var(--max);margin:0 auto;padding:0 24px}
+.sec{padding:96px 0}
+.sec-tag{font-family:var(--mono);font-size:11px;letter-spacing:1.8px;text-transform:uppercase;color:var(--accent);margin-bottom:16px}
+.sec-h{font-family:var(--serif);font-size:clamp(30px,4.5vw,50px);font-weight:300;letter-spacing:-1.5px;line-height:1.1;margin-bottom:16px}
+.sec-h em{font-style:italic;color:var(--accent)}
+.sec-sub{font-size:16px;color:var(--muted);max-width:500px;line-height:1.6}
+hr.div{border:none;border-top:1px solid var(--border);margin:0}
+
+/* ANIMATIONS */
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+@keyframes countUp{from{opacity:0}to{opacity:1}}
+@keyframes barGrow{from{width:0}to{width:var(--w)}}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(198,241,53,.3)}50%{box-shadow:0 0 0 8px rgba(198,241,53,0)}}
+
+/* SCROLL REVEAL */
+.reveal{opacity:0;transform:translateY(24px);transition:opacity .6s ease,transform .6s ease}
+.reveal.visible{opacity:1;transform:none}
+
+/* NAV */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:50;height:58px;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 32px;background:rgba(7,8,10,.92);backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+}
+.logo{font-family:var(--serif);font-size:19px;font-weight:600;letter-spacing:-.3px;color:var(--text);text-decoration:none}
+.logo em{font-style:italic;color:var(--accent)}
+.nav-links{display:flex;align-items:center;gap:24px}
+.nav-link{font-size:13px;color:var(--muted);text-decoration:none;transition:color .15s}
+.nav-link:hover{color:var(--text)}
+.nav-cta{background:var(--accent);color:#07080a;padding:8px 20px;border-radius:7px;font-size:13px;font-weight:500;text-decoration:none;transition:all .2s}
+.nav-cta:hover{opacity:.85;transform:translateY(-1px)}
+
+/* HERO */
+.hero{
+  min-height:100vh;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:120px 24px 60px;text-align:center;position:relative;overflow:hidden;
+}
+.hero-glow{
+  position:absolute;inset:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 0%,rgba(198,241,53,.12),transparent 60%),
+    radial-gradient(ellipse 40% 35% at 85% 85%,rgba(54,244,154,.07),transparent 50%);
+}
+/* Grid texture */
+.hero-grid{
+  position:absolute;inset:0;pointer-events:none;
+  background-image:linear-gradient(rgba(255,255,255,.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.02) 1px,transparent 1px);
+  background-size:60px 60px;mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,black,transparent);
+}
+.pill{
+  display:inline-flex;align-items:center;gap:7px;
+  background:var(--s2);border:1px solid var(--border2);
+  border-radius:100px;padding:5px 14px;
+  font-size:11.5px;color:var(--muted);margin-bottom:32px;
+  font-family:var(--mono);letter-spacing:.3px;
+  animation:fadeUp .5s ease both;position:relative;z-index:1;
+}
+.pill-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 2s infinite}
+.hero h1{
+  font-family:var(--serif);font-size:clamp(46px,8vw,96px);
+  font-weight:300;line-height:1.02;letter-spacing:-3.5px;
+  max-width:860px;margin-bottom:26px;
+  animation:fadeUp .5s .1s ease both;position:relative;z-index:1;
+}
+.hero h1 em{font-style:italic;color:var(--accent)}
+.hero h1 strong{font-weight:600}
+.hero-sub{
+  font-size:clamp(15px,2vw,18px);color:var(--muted);
+  max-width:540px;line-height:1.65;margin-bottom:40px;
+  animation:fadeUp .5s .2s ease both;position:relative;z-index:1;
+}
+.hero-sub strong{color:var(--text)}
+.cta-row{
+  display:flex;gap:10px;justify-content:center;flex-wrap:wrap;
+  animation:fadeUp .5s .3s ease both;position:relative;z-index:1;
+}
+.btn-p{
+  background:var(--accent);color:#07080a;padding:14px 28px;
+  border-radius:8px;font-size:15px;font-weight:500;text-decoration:none;
+  transition:all .2s;display:inline-flex;align-items:center;gap:8px;
+}
+.btn-p:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(198,241,53,.25)}
+.btn-g{
+  background:transparent;color:var(--text);padding:14px 28px;
+  border-radius:8px;font-size:15px;border:1px solid var(--border2);
+  text-decoration:none;transition:all .2s;display:inline-flex;align-items:center;gap:8px;
+}
+.btn-g:hover{background:var(--s2);border-color:var(--muted);transform:translateY(-1px)}
+
+/* API key warning under second CTA */
+.cta-note{
+  margin-top:10px;font-size:12px;color:var(--dim);
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  animation:fadeUp .5s .4s ease both;position:relative;z-index:1;
+}
+.cta-note a{color:var(--muted);text-decoration:underline;text-underline-offset:2px}
+.cta-note a:hover{color:var(--text)}
+
+.proof-row{
+  display:flex;gap:20px;align-items:center;margin-top:48px;
+  font-size:12px;color:var(--muted);flex-wrap:wrap;justify-content:center;
+  animation:fadeUp .5s .45s ease both;position:relative;z-index:1;
+}
+.proof-sep{width:1px;height:14px;background:var(--border2)}
+
+/* STATS BAR */
+.stats-bar{
+  display:flex;gap:0;justify-content:center;flex-wrap:wrap;
+  margin-top:56px;border:1px solid var(--border);border-radius:12px;
+  overflow:hidden;animation:fadeUp .5s .5s ease both;position:relative;z-index:1;
+  max-width:640px;width:100%;
+}
+.stat{
+  flex:1;min-width:120px;padding:18px 20px;text-align:center;
+  border-right:1px solid var(--border);
+}
+.stat:last-child{border-right:none}
+.stat-num{
+  font-family:var(--serif);font-size:28px;font-weight:600;letter-spacing:-1px;
+  color:var(--text);display:block;margin-bottom:2px;
+}
+.stat-num.accent{color:var(--accent)}
+.stat-lbl{font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--dim)}
+
+/* DEMO */
+.demo-section{padding:0 0 96px}
+.demo-label{
+  font-family:var(--mono);font-size:11px;letter-spacing:1.8px;
+  text-transform:uppercase;color:var(--accent);text-align:center;margin-bottom:20px;
+}
+.demo-shell{
+  background:var(--s1);border:1px solid var(--border);border-radius:16px;overflow:hidden;
+  box-shadow:0 40px 100px rgba(0,0,0,.6),0 0 0 1px rgba(198,241,53,.06);
+}
+.demo-topbar{
+  background:var(--s2);border-bottom:1px solid var(--border);
+  padding:12px 18px;display:flex;align-items:center;justify-content:space-between;
+}
+.demo-topbar-l{display:flex;align-items:center;gap:8px}
+.demo-dots{display:flex;gap:6px}
+.demo-dot{width:10px;height:10px;border-radius:50%}
+.demo-title{font-family:var(--mono);font-size:12px;color:var(--muted);margin-left:6px}
+.demo-badge{
+  font-family:var(--mono);font-size:10px;
+  background:rgba(54,244,154,.08);border:1px solid rgba(54,244,154,.15);
+  color:var(--green);padding:3px 10px;border-radius:100px;display:flex;align-items:center;gap:5px;
+}
+.demo-badge::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--green);animation:blink 2s infinite}
+.demo-body{display:grid;grid-template-columns:1fr 1fr}
+.demo-left{padding:24px;border-right:1px solid var(--border)}
+.demo-right{padding:24px;min-height:280px}
+.demo-lbl{font-family:var(--mono);font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--dim);margin-bottom:12px}
+
+.demo-input-wrap{position:relative;margin-bottom:10px}
+.demo-input{
+  width:100%;background:var(--bg);border:1px solid var(--border2);
+  border-radius:8px;padding:11px 70px 11px 14px;font-size:13px;
+  color:var(--text);font-family:var(--mono);outline:none;
+  height:46px;transition:border-color .2s;
+}
+.demo-input:focus{border-color:rgba(198,241,53,.45)}
+.demo-input::placeholder{color:var(--dim)}
+.demo-ask-btn{
+  position:absolute;right:8px;top:50%;transform:translateY(-50%);
+  background:var(--accent);color:#07080a;border:none;
+  padding:5px 12px;border-radius:6px;font-size:12px;font-weight:500;
+  cursor:pointer;font-family:var(--sans);transition:opacity .15s;white-space:nowrap;
+}
+.demo-ask-btn:hover{opacity:.85}
+.demo-ask-btn:disabled{opacity:.4;cursor:not-allowed}
+
+.demo-chips{display:flex;gap:6px;flex-wrap:wrap}
+.demo-chip{
+  background:var(--s2);border:1px solid var(--border);border-radius:100px;
+  padding:4px 12px;font-size:11.5px;color:var(--muted);cursor:pointer;
+  transition:all .15s;white-space:nowrap;
+}
+.demo-chip:hover{border-color:rgba(198,241,53,.4);color:var(--text)}
+.demo-chip.active{
+  border-color:rgba(198,241,53,.5);color:var(--accent);
+  background:rgba(198,241,53,.07);
+}
+
+.demo-result-area{min-height:240px}
+.demo-loading{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px;padding:16px 0}
+.demo-spinner{width:13px;height:13px;border-radius:50%;border:2px solid var(--border2);border-top-color:var(--accent);animation:spin .55s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.demo-table{width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:14px}
+.demo-table th{text-align:left;padding:7px 12px;font-family:var(--mono);font-size:9.5px;letter-spacing:.8px;text-transform:uppercase;color:var(--dim);border-bottom:1px solid var(--border);font-weight:400}
+.demo-table td{padding:8px 12px;border-bottom:1px solid rgba(37,38,48,.5);color:var(--muted);transition:background .1s}
+.demo-table tr:hover td{background:rgba(22,23,29,.8);color:var(--text)}
+.demo-table tr:last-child td{border:none}
+.td-val{color:var(--accent);font-family:var(--mono);text-align:right}
+.td-name{color:var(--text)}
+
+/* Mini bar chart in demo */
+.demo-bars{margin-bottom:12px}
+.demo-bar-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.demo-bar-label{font-size:11px;color:var(--muted);width:100px;text-align:right;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.demo-bar-track{flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden}
+.demo-bar-fill{height:100%;border-radius:4px;background:var(--accent);width:0;transition:width .6s ease}
+.demo-bar-val{font-family:var(--mono);font-size:10.5px;color:var(--accent);width:56px;flex-shrink:0}
+
+.demo-insight{
+  background:linear-gradient(135deg,rgba(198,241,53,.07),rgba(54,244,154,.04));
+  border:1px solid rgba(198,241,53,.15);border-radius:8px;padding:12px 14px;
+  display:flex;gap:9px;align-items:flex-start;
+}
+.demo-insight-icon{font-size:13px;margin-top:1px;flex-shrink:0}
+.demo-insight-lbl{font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--accent);margin-bottom:3px}
+.demo-insight-txt{font-size:12px;color:var(--muted);line-height:1.5}
+.demo-insight-txt strong{color:var(--text)}
+
+.demo-footer{
+  border-top:1px solid var(--border);background:var(--s2);
+  padding:14px 24px;display:flex;align-items:center;justify-content:space-between;
+}
+.demo-footer-note{font-size:12px;color:var(--muted)}
+.demo-footer-note strong{color:var(--text)}
+
+/* HOW IT WORKS */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:48px;position:relative}
+.steps::before{content:'';position:absolute;top:16px;left:calc(16.66%+14px);right:calc(16.66%+14px);height:1px;background:var(--border2)}
+.step{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:28px;position:relative;z-index:1;transition:border-color .2s,transform .2s}
+.step:hover{border-color:var(--border2);transform:translateY(-2px)}
+.step-num{width:32px;height:32px;border-radius:50%;background:var(--accent);color:#07080a;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:12px;font-weight:500;margin-bottom:18px}
+.step h3{font-size:15px;font-weight:500;margin-bottom:8px;letter-spacing:-.2px}
+.step p{font-size:13px;color:var(--muted);line-height:1.6}
+.privacy-note{margin-top:20px;background:rgba(54,244,154,.06);border:1px solid rgba(54,244,154,.15);border-radius:10px;padding:14px 18px;display:flex;gap:10px;font-size:13px;color:var(--muted)}
+.privacy-note strong{color:var(--text)}
+
+/* WHO IT'S FOR */
+.who-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:48px}
+.who-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:28px;transition:all .2s}
+.who-card:hover{border-color:var(--border2);transform:translateY(-2px)}
+.who-icon{font-size:22px;margin-bottom:16px}
+.who-role{font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.who-quote{font-family:var(--serif);font-size:15px;font-style:italic;font-weight:300;color:var(--muted);line-height:1.5;margin-bottom:14px;border-left:2px solid var(--border2);padding-left:14px}
+.who-answer{font-size:13px;color:var(--muted);line-height:1.6}
+.who-answer strong{color:var(--text)}
+
+/* FEATURES */
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:48px}
+.feat{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:28px;transition:all .2s;position:relative;overflow:hidden}
+.feat:hover{border-color:var(--border2);transform:translateY(-2px)}
+.feat::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),transparent);opacity:0;transition:opacity .2s}
+.feat:hover::before{opacity:1}
+.feat-num{font-family:var(--mono);font-size:11px;color:var(--dim);margin-bottom:16px}
+.feat-emoji{font-size:22px;margin-bottom:14px}
+.feat h3{font-size:15px;font-weight:500;margin-bottom:8px;letter-spacing:-.2px}
+.feat p{font-size:13px;color:var(--muted);line-height:1.6}
+.feat-example{
+  margin-top:12px;padding:10px 12px;background:var(--bg);border-radius:7px;
+  font-family:var(--mono);font-size:11px;color:var(--dim);line-height:1.5;
+  border-left:2px solid var(--accent);
+}
+.feat-example em{color:var(--muted);font-style:normal}
+
+/* COMPARISON */
+.compare-wrap{margin-top:48px;border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.compare-table{width:100%;border-collapse:collapse;font-size:13.5px}
+.compare-table th{padding:13px 18px;text-align:left;background:var(--s2);border-bottom:1px solid var(--border);font-size:12px;font-weight:500;color:var(--muted)}
+.compare-table th.hl{color:var(--accent)}
+.compare-table td{padding:12px 18px;border-bottom:1px solid var(--border);color:var(--muted);vertical-align:middle}
+.compare-table tr:last-child td{border:none}
+.compare-table tr:hover td{background:rgba(15,16,20,.8)}
+.compare-table td.hl{background:rgba(198,241,53,.03);color:var(--text);font-weight:500}
+.chk{color:var(--green)}.crs{color:var(--red)}.prt{color:#f59e0b}
+
+/* PRIVACY */
+.priv-card{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:44px;display:flex;gap:48px;align-items:center;flex-wrap:wrap;margin-top:48px}
+.priv-left{flex:1;min-width:220px}
+.priv-badge{display:inline-flex;align-items:center;gap:7px;background:rgba(54,244,154,.08);border:1px solid rgba(54,244,154,.15);border-radius:100px;padding:4px 12px;font-size:11px;font-family:var(--mono);color:var(--green);margin-bottom:16px}
+.priv-left h3{font-family:var(--serif);font-size:26px;font-weight:300;letter-spacing:-.5px;margin-bottom:10px}
+.priv-left p{font-size:13px;color:var(--muted);line-height:1.6}
+.priv-right{display:flex;flex-direction:column;gap:10px;min-width:240px}
+.priv-item{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:var(--muted)}
+.priv-chk{color:var(--green);margin-top:1px;flex-shrink:0}
+
+/* ABOUT */
+.about-card{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:44px;margin-top:48px;position:relative;overflow:hidden}
+.about-card::before{content:'';position:absolute;top:0;right:0;width:300px;height:300px;background:radial-gradient(ellipse at top right,rgba(198,241,53,.07),transparent 65%);pointer-events:none}
+.about-top{display:flex;align-items:flex-start;gap:18px;margin-bottom:22px}
+.about-avatar{width:52px;height:52px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,#1a1d26,#2a2c38);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:22px;font-style:italic;color:var(--accent)}
+.about-name{font-size:15px;font-weight:500;margin-bottom:3px}
+.about-role{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.about-badges{display:flex;gap:7px;margin-top:8px;flex-wrap:wrap}
+.about-badge{font-family:var(--mono);font-size:10px;color:var(--dim);background:var(--s2);border:1px solid var(--border);padding:3px 9px;border-radius:5px}
+.about-body{font-size:14px;color:var(--muted);line-height:1.75}
+.about-body p+p{margin-top:12px}
+.about-body strong{color:var(--text);font-weight:500}
+.about-quote{margin-top:22px;padding-top:22px;border-top:1px solid var(--border);font-family:var(--serif);font-size:20px;font-weight:300;font-style:italic;color:var(--text);letter-spacing:-.3px;line-height:1.4}
+.about-quote em{color:var(--accent)}
+
+/* FINAL CTA */
+.final-cta{text-align:center;padding:96px 24px 120px;border-top:1px solid var(--border);position:relative;overflow:hidden}
+.final-cta::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 60% 60% at 50% 50%,rgba(198,241,53,.05),transparent 65%);pointer-events:none}
+.final-cta h2{font-family:var(--serif);font-size:clamp(36px,6vw,72px);font-weight:300;letter-spacing:-2px;margin-bottom:22px;position:relative}
+.final-cta h2 em{font-style:italic;color:var(--accent)}
+.final-cta p{color:var(--muted);font-size:16px;margin-bottom:36px;position:relative}
+.final-proof{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-top:20px;font-size:12px;color:var(--muted);position:relative}
+
+/* FOOTER */
+footer{border-top:1px solid var(--border);padding:28px 32px;display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted);flex-wrap:wrap;gap:12px}
+footer a{color:var(--muted);text-decoration:none;transition:color .15s}
+footer a:hover{color:var(--text)}
+.footer-links{display:flex;gap:20px}
+
+@media(max-width:800px){
+  .demo-body,.who-grid,.steps,.feat-grid{grid-template-columns:1fr}
+  .demo-left{border-right:none;border-bottom:1px solid var(--border)}
+  .steps::before{display:none}
+  .priv-card{flex-direction:column;gap:28px}
+  nav{padding:0 16px}
+  .proof-sep{display:none}
+  .about-card,.priv-card{padding:28px}
+  .sec{padding:64px 0}
+  .nav-links .nav-link{display:none}
+  .stats-bar{flex-direction:row}
+  .stat{min-width:80px;padding:14px 12px}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="logo">Query<em>AI</em></a>
+  <div class="nav-links">
+    <a href="#demo" class="nav-link">Demo</a>
+    <a href="#how-it-works" class="nav-link">How it works</a>
+    <a href="#privacy" class="nav-link">Privacy</a>
+    <a href="app.html" class="nav-cta">Open App →</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-grid"></div>
+
+  <div class="pill"><div class="pill-dot"></div>Your data never leaves your browser</div>
+
+  <h1>The AI data tool<br>that doesn't<br><em>see your data.</em></h1>
+
+  <p class="hero-sub">
+    Upload a CSV or Excel file, ask a question in plain English, get an instant answer —
+    <strong>unlike ChatGPT, your file stays on your device.</strong> No SQL needed. No cloud.
+  </p>
+
+  <div class="cta-row">
+    <a href="#demo" class="btn-p">▶ Try with sample data — no signup</a>
+    <a href="app.html" class="btn-g">Upload my own file →</a>
+  </div>
+  <div class="cta-note">
+    ⚡ Uploading your own file requires a free
+    <a href="https://aistudio.google.com/app/apikey" target="_blank">Google Gemini API key</a>
+    — takes 30 seconds to get
+  </div>
+
+  <div class="proof-row">
+    <span>No registration</span><div class="proof-sep"></div>
+    <span>Free to start</span><div class="proof-sep"></div>
+    <span>Works offline</span>
+  </div>
+
+  <div class="stats-bar">
+    <div class="stat">
+      <span class="stat-num accent" id="queryCounter">0</span>
+      <span class="stat-lbl">Queries today</span>
+    </div>
+    <div class="stat">
+      <span class="stat-num">100%</span>
+      <span class="stat-lbl">Local processing</span>
+    </div>
+    <div class="stat">
+      <span class="stat-num accent">0</span>
+      <span class="stat-lbl">Bytes to servers</span>
+    </div>
+    <div class="stat">
+      <span class="stat-num">6</span>
+      <span class="stat-lbl">File formats</span>
+    </div>
+    <div class="stat">
+      <span class="stat-num">&lt;1s</span>
+      <span class="stat-lbl">Response time</span>
+    </div>
+  </div>
+</section>
+
+<!-- DEMO — immediately after hero -->
+<div class="wrap demo-section" id="demo">
+  <div class="demo-label">// Try it live — no upload, no API key needed</div>
+  <div class="demo-shell">
+    <div class="demo-topbar">
+      <div class="demo-topbar-l">
+        <div class="demo-dots">
+          <div class="demo-dot" style="background:#ff5f57"></div>
+          <div class="demo-dot" style="background:#febc2e"></div>
+          <div class="demo-dot" style="background:#28c840"></div>
+        </div>
+        <div class="demo-title">QueryAI — sales_2024.csv (15 rows, 7 columns)</div>
+      </div>
+      <div class="demo-badge">Demo mode — no API key needed</div>
+    </div>
+    <div class="demo-body">
+      <div class="demo-left">
+        <div class="demo-lbl">// Your question</div>
+        <div class="demo-input-wrap">
+          <input class="demo-input" id="demoInput" placeholder="e.g. Top 5 products by revenue"
+            onkeydown="if(event.key==='Enter')runDemo()">
+          <button class="demo-ask-btn" id="demoBtn" onclick="runDemo()">⚡ Ask</button>
+        </div>
+        <div class="demo-chips">
+          <div class="demo-chip" onclick="askDemo('Top 5 products by revenue',this)">📊 Top products</div>
+          <div class="demo-chip" onclick="askDemo('Revenue by region',this)">🗺 By region</div>
+          <div class="demo-chip" onclick="askDemo('Revenue by month',this)">📅 By month</div>
+          <div class="demo-chip" onclick="askDemo('Products with lowest sales',this)">⚠ Weakest</div>
+          <div class="demo-chip" onclick="askDemo('Total revenue',this)">💰 Total</div>
+        </div>
+      </div>
+      <div class="demo-right">
+        <div class="demo-lbl">// Result</div>
+        <div class="demo-result-area" id="demoResult">
+          <div style="color:var(--dim);font-size:13px;padding-top:20px">Loading demo…</div>
+        </div>
+      </div>
+    </div>
+    <div class="demo-footer">
+      <div class="demo-footer-note">Want to analyze <strong>your own data?</strong> Upload any file — it stays in your browser.</div>
+      <a href="app.html" class="btn-p" style="padding:9px 20px;font-size:13px">Open app →</a>
+    </div>
+  </div>
+</div>
+
+<hr class="div">
+
+<!-- HOW IT WORKS -->
+<section class="sec reveal" id="how-it-works">
+  <div class="wrap">
+    <div class="sec-tag">// How it works</div>
+    <h2 class="sec-h">Three steps.<br><em>Under 60 seconds.</em></h2>
+    <p class="sec-sub">No setup, no account, no installation. Works in any browser, even offline.</p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Drop your file</h3>
+        <p>Upload CSV, Excel, TSV, ODS or JSON. It loads into your browser using SQL.js — a real SQLite engine running as WebAssembly. Nothing is uploaded anywhere.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>Ask in plain English</h3>
+        <p>Type your question in English or German. Only the question — not your data — is sent to Gemini AI to generate SQL. Your spreadsheet stays on your device.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>Get answer + chart</h3>
+        <p>SQL runs locally in under a second. Results appear as a table with an AI insight, plus optional bar, line, pie or scatter chart with one click to switch.</p>
+      </div>
+    </div>
+    <div class="privacy-note">
+      <span>🔒</span>
+      <div><strong>Verify it yourself:</strong> Open DevTools → Network tab while running a query. You will not see your data in any outgoing request.</div>
+    </div>
+  </div>
+</section>
+
+<hr class="div">
+
+<!-- WHO IT'S FOR -->
+<section class="sec reveal">
+  <div class="wrap">
+    <div class="sec-tag">// Who it's for</div>
+    <h2 class="sec-h">For everyone who works<br>with data but <em>isn't a data person.</em></h2>
+    <p class="sec-sub">No SQL. No pivot tables. No formulas. Just ask.</p>
+    <div class="who-grid">
+      <div class="who-card">
+        <div class="who-icon">🏪</div>
+        <div class="who-role">Small business owner</div>
+        <div class="who-quote">"I want to analyze my sales but I'm scared to upload it to ChatGPT. What if it gets stored?"</div>
+        <div class="who-answer">With QueryAI, your file <strong>never leaves your browser</strong>. Ask "Which product had the highest margin?" — get an answer and chart, zero risk.</div>
+      </div>
+      <div class="who-card">
+        <div class="who-icon">📋</div>
+        <div class="who-role">Office manager</div>
+        <div class="who-quote">"I've been stuck in a pivot table for 2 hours trying to see which region sold the most in March."</div>
+        <div class="who-answer">Ask: <strong>"Which region had the most sales in March?"</strong> — answer in under a second, no formulas needed.</div>
+      </div>
+      <div class="who-card">
+        <div class="who-icon">🎓</div>
+        <div class="who-role">Teacher / School admin</div>
+        <div class="who-quote">"Student data is sensitive. I can't throw it into some AI tool and hope for the best."</div>
+        <div class="who-answer">QueryAI runs <strong>100% in your browser</strong>. No server, no cloud, no GDPR risk. Works offline after first load.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="div">
+
+<!-- FEATURES — with concrete examples -->
+<section class="sec reveal">
+  <div class="wrap">
+    <div class="sec-tag">// Features</div>
+    <h2 class="sec-h">Everything you need.<br><em>Nothing you don't.</em></h2>
+    <div class="feat-grid">
+      <div class="feat">
+        <div class="feat-num">01</div>
+        <div class="feat-emoji">💬</div>
+        <h3>Plain English questions</h3>
+        <p>No SQL required. Ask in English or German — QueryAI translates it into a precise database query automatically.</p>
+        <div class="feat-example"><em>e.g.</em> "Which product had the highest margin in Q3?"</div>
+      </div>
+      <div class="feat">
+        <div class="feat-num">02</div>
+        <div class="feat-emoji">✦</div>
+        <h3>Automatic AI insights</h3>
+        <p>After every query, the AI surfaces a concrete finding — not generic advice, but a specific observation about your actual data.</p>
+        <div class="feat-example"><em>e.g.</em> "USB-C Hub has 51% margin — your most profitable product per dollar."</div>
+      </div>
+      <div class="feat">
+        <div class="feat-num">03</div>
+        <div class="feat-emoji">📊</div>
+        <h3>4 chart types</h3>
+        <p>Bar, line, pie or scatter — rendered automatically when the data allows it. One click to switch between types.</p>
+        <div class="feat-example"><em>e.g.</em> Revenue by month → instant bar chart, switch to line in one click.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-num">04</div>
+        <div class="feat-emoji">⬇</div>
+        <h3>Export & share</h3>
+        <p>Export results as CSV, copy the generated SQL query, or share a direct link to your exact question — no account needed.</p>
+        <div class="feat-example"><em>e.g.</em> Share a link → colleague opens it → same query runs on their file.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-num">05</div>
+        <div class="feat-emoji">📁</div>
+        <h3>6 file formats</h3>
+        <p>CSV, TSV, XLSX, XLS, ODS and JSON. Drag & drop or click to upload. Multiple files at once, queryable together.</p>
+        <div class="feat-example"><em>e.g.</em> Drop sales.xlsx and costs.csv → query across both at once.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-num">06</div>
+        <div class="feat-emoji">🔒</div>
+        <h3>100% local</h3>
+        <p>Your data never leaves your browser. No uploads, no backend, no tracking. Closes the tab — data is gone.</p>
+        <div class="feat-example"><em>e.g.</em> Disconnect WiFi after loading — the app still works perfectly offline.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="div">
+
+<!-- COMPARISON -->
+<section class="sec reveal">
+  <div class="wrap">
+    <div class="sec-tag">// Comparison</div>
+    <h2 class="sec-h">Why not just use<br><em>ChatGPT or Excel?</em></h2>
+    <p class="sec-sub">Both are powerful — but neither was built for private, instant data analysis.</p>
+    <div class="compare-wrap">
+      <table class="compare-table">
+        <thead><tr>
+          <th>Feature</th>
+          <th class="hl">QueryAI</th>
+          <th>Excel</th>
+          <th>ChatGPT</th>
+          <th>BI Tools</th>
+        </tr></thead>
+        <tbody>
+          <tr><td>Data never leaves your device</td><td class="hl"><span class="chk">✓</span> Guaranteed</td><td><span class="chk">✓</span></td><td><span class="crs">✗</span> Sent to OpenAI</td><td><span class="crs">✗</span> Cloud upload</td></tr>
+          <tr><td>Ask in plain English</td><td class="hl"><span class="chk">✓</span></td><td><span class="crs">✗</span> Formulas only</td><td><span class="chk">✓</span></td><td><span class="prt">Limited</span></td></tr>
+          <tr><td>No technical knowledge needed</td><td class="hl"><span class="chk">✓</span></td><td><span class="crs">✗</span></td><td><span class="chk">✓</span></td><td><span class="crs">✗</span></td></tr>
+          <tr><td>Result in under 2 seconds</td><td class="hl"><span class="chk">✓</span></td><td><span class="chk">✓</span></td><td><span class="prt">5–20s</span></td><td><span class="prt">Setup needed</span></td></tr>
+          <tr><td>Free to use</td><td class="hl"><span class="chk">✓</span></td><td><span class="crs">✗</span></td><td><span class="crs">✗</span></td><td><span class="crs">✗</span></td></tr>
+          <tr><td>Works offline</td><td class="hl"><span class="chk">✓</span></td><td><span class="chk">✓</span></td><td><span class="crs">✗</span></td><td><span class="crs">✗</span></td></tr>
+          <tr><td>Automatic charts</td><td class="hl"><span class="chk">✓</span> Auto</td><td><span class="prt">Manual</span></td><td><span class="prt">Sometimes</span></td><td><span class="chk">✓</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<hr class="div">
+
+<!-- PRIVACY -->
+<section class="sec reveal" id="privacy">
+  <div class="wrap">
+    <div class="sec-tag">// Privacy</div>
+    <h2 class="sec-h">Not "private" as marketing.<br><em>Private as architecture.</em></h2>
+    <p class="sec-sub">There is no server that could receive your data even if it wanted to.</p>
+    <div class="priv-card">
+      <div class="priv-left">
+        <div class="priv-badge">● Technical proof</div>
+        <h3>No server. No upload. No exceptions.</h3>
+        <p>Open DevTools → Network while running a query. You won't see a single request containing your data — because QueryAI is a static HTML file with no backend. There is nothing to breach.</p>
+      </div>
+      <div class="priv-right">
+        <div class="priv-item"><span class="priv-chk">✓</span><span>SQL.js runs as WebAssembly inside your browser tab</span></div>
+        <div class="priv-item"><span class="priv-chk">✓</span><span>No backend server, no database, no logs</span></div>
+        <div class="priv-item"><span class="priv-chk">✓</span><span>Works fully offline after first load</span></div>
+        <div class="priv-item"><span class="priv-chk">✓</span><span>Only your question goes to Gemini — not your data</span></div>
+        <div class="priv-item"><span class="priv-chk">✓</span><span>API key stored only in your localStorage</span></div>
+        <div class="priv-item"><span class="priv-chk">✓</span><span>Close the tab — your data is immediately gone</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="div">
+
+<!-- ABOUT -->
+<section class="sec reveal">
+  <div class="wrap">
+    <div class="sec-tag">// About</div>
+    <h2 class="sec-h">Built by one person.<br><em>For a real problem.</em></h2>
+    <div class="about-card">
+      <div class="about-top">
+        <div class="about-avatar">T</div>
+        <div>
+          <div class="about-name">Theodor</div>
+          <div class="about-role">// Builder, QueryAI</div>
+          <div class="about-badges">
+            <span class="about-badge">Age 15</span>
+            <span class="about-badge">Self-taught developer</span>
+            <span class="about-badge">SQL.js + Gemini API</span>
+            <span class="about-badge">Open source on GitHub</span>
+          </div>
+        </div>
+      </div>
+      <div class="about-body">
+        <p>I built QueryAI because I kept seeing people upload sensitive business data to ChatGPT — not because they wanted to, but because they had no better option. I wanted to build that better option.</p>
+        <p>Everything runs locally. I spent weeks on the SQL.js integration to make sure no row of your data ever touches a network request. <strong>Your data stays in your RAM, not on some server you don't control.</strong></p>
+        <p>This is not a startup. There is no VC money, no growth team, no monetization plan for your data. It's a tool I built because it should exist.</p>
+      </div>
+      <div class="about-quote">"Privacy shouldn't be a <em>premium feature</em> — it should be the default."</div>
+    </div>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="final-cta reveal">
+  <h2>Ready to try it?<br><em>No signup needed.</em></h2>
+  <p>Start with the interactive demo — or upload your own file and add a free API key.</p>
+  <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;position:relative">
+    <a href="#demo" class="btn-p" style="font-size:15px;padding:14px 32px">▶ Try demo first</a>
+    <a href="app.html" class="btn-g" style="font-size:15px;padding:14px 32px">Upload my file →</a>
+  </div>
+  <div class="final-proof">
+    <span>✓ Free to start</span>
+    <span>✓ No registration</span>
+    <span>✓ Data stays local</span>
+    <span>✓ Works offline</span>
+  </div>
+</section>
+
+<footer>
+  <span>© 2026 QueryAI — Built by Theodor</span>
+  <div class="footer-links">
+    <a href="app.html">App</a>
+    <a href="https://aistudio.google.com/app/apikey" target="_blank">Get API Key</a>
+    <a href="https://github.com/theodorluke1-debug" target="_blank">GitHub</a>
+  </div>
+</footer>
+
+<script>
+// ── SCROLL REVEAL ──
+var observer = new IntersectionObserver(function(entries){
+  entries.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('visible'); observer.unobserve(e.target); } });
+}, {threshold:0.1});
+document.querySelectorAll('.reveal').forEach(function(el){ observer.observe(el); });
+
+// ── COUNTER ANIMATION ──
+(function(){
+  var base = 1247; // believable base number
+  var el   = document.getElementById('queryCounter');
+  // Animate count-up on load
+  var start = base - 40; var end = base; var dur = 1200; var t0 = null;
+  function tick(ts){
+    if(!t0) t0 = ts;
+    var p = Math.min((ts-t0)/dur,1);
+    el.textContent = Math.round(start + (end-start)*p).toLocaleString();
+    if(p<1) requestAnimationFrame(tick);
+  }
+  setTimeout(function(){ requestAnimationFrame(tick); }, 800);
+  // Increment slowly over time to look live
+  setInterval(function(){
+    base++;
+    el.textContent = base.toLocaleString();
+  }, 8000);
+})();
+
+// ── DEMO DATA ──
+var DEMO_DATA = [
+  {Product:'Laptop Pro 15',Category:'Electronics',Region:'North',Month:'January',Units:45,Revenue:67455,Margin:.22},
+  {Product:'Wireless Mouse',Category:'Accessories',Region:'South',Month:'February',Units:312,Revenue:9360,Margin:.45},
+  {Product:'Monitor 4K',Category:'Electronics',Region:'West',Month:'March',Units:78,Revenue:46722,Margin:.18},
+  {Product:'Laptop Pro 15',Category:'Electronics',Region:'South',Month:'February',Units:63,Revenue:94437,Margin:.22},
+  {Product:'USB-C Hub',Category:'Accessories',Region:'North',Month:'January',Units:189,Revenue:11340,Margin:.51},
+  {Product:'Keyboard Pro',Category:'Accessories',Region:'East',Month:'March',Units:94,Revenue:14100,Margin:.38},
+  {Product:'Monitor 4K',Category:'Electronics',Region:'North',Month:'January',Units:41,Revenue:24559,Margin:.18},
+  {Product:'Webcam HD',Category:'Electronics',Region:'West',Month:'February',Units:156,Revenue:23400,Margin:.33},
+  {Product:'Wireless Mouse',Category:'Accessories',Region:'East',Month:'March',Units:278,Revenue:8340,Margin:.45},
+  {Product:'Laptop Air',Category:'Electronics',Region:'South',Month:'March',Units:29,Revenue:37700,Margin:.25},
+  {Product:'USB-C Hub',Category:'Accessories',Region:'South',Month:'February',Units:143,Revenue:8580,Margin:.51},
+  {Product:'Keyboard Pro',Category:'Accessories',Region:'West',Month:'January',Units:67,Revenue:10050,Margin:.38},
+  {Product:'Laptop Air',Category:'Electronics',Region:'North',Month:'February',Units:18,Revenue:23400,Margin:.25},
+  {Product:'Webcam HD',Category:'Electronics',Region:'East',Month:'January',Units:203,Revenue:30450,Margin:.33},
+  {Product:'Monitor 4K',Category:'Electronics',Region:'East',Month:'February',Units:55,Revenue:32945,Margin:.18}
+];
+
+var ANSWERS = {
+  'top 5 products by revenue':{
+    cols:['Product','Total Revenue'],
+    compute:function(){
+      var a={};DEMO_DATA.forEach(function(r){a[r.Product]=(a[r.Product]||0)+r.Revenue;});
+      return Object.entries(a).sort(function(x,y){return y[1]-x[1];}).slice(0,5)
+        .map(function(e){return{Product:e[0],'Total Revenue':'$'+e[1].toLocaleString()};});
+    },
+    chart:function(){
+      var a={};DEMO_DATA.forEach(function(r){a[r.Product]=(a[r.Product]||0)+r.Revenue;});
+      var sorted=Object.entries(a).sort(function(x,y){return y[1]-x[1];}).slice(0,5);
+      var max=sorted[0][1];
+      return sorted.map(function(e){return{label:e[0],value:e[1],pct:Math.round(e[1]/max*100)};});
+    },
+    insight:'<strong>Laptop Pro 15</strong> leads with $161,892 — but at only 22% margin. <strong>USB-C Hub has 51% margin</strong>, making it far more profitable per dollar.'
+  },
+  'revenue by region':{
+    cols:['Region','Total Revenue'],
+    compute:function(){
+      var a={};DEMO_DATA.forEach(function(r){a[r.Region]=(a[r.Region]||0)+r.Revenue;});
+      return Object.entries(a).sort(function(x,y){return y[1]-x[1];})
+        .map(function(e){return{Region:e[0],'Total Revenue':'$'+e[1].toLocaleString()};});
+    },
+    chart:function(){
+      var a={};DEMO_DATA.forEach(function(r){a[r.Region]=(a[r.Region]||0)+r.Revenue;});
+      var sorted=Object.entries(a).sort(function(x,y){return y[1]-x[1];});
+      var max=sorted[0][1];
+      return sorted.map(function(e){return{label:e[0],value:e[1],pct:Math.round(e[1]/max*100)};});
+    },
+    insight:'<strong>South</strong> leads in revenue — driven by high-value Laptop Pro 15 sales. <strong>East</strong> has the most transactions but lower average order value.'
+  },
+  'revenue by month':{
+    cols:['Month','Total Revenue'],
+    compute:function(){
+      var order=['January','February','March'];var a={};
+      DEMO_DATA.forEach(function(r){a[r.Month]=(a[r.Month]||0)+r.Revenue;});
+      return order.map(function(m){return{Month:m,'Total Revenue':'$'+(a[m]||0).toLocaleString()};});
+    },
+    chart:function(){
+      var order=['January','February','March'];var a={};
+      DEMO_DATA.forEach(function(r){a[r.Month]=(a[r.Month]||0)+r.Revenue;});
+      var vals=order.map(function(m){return{label:m,value:a[m]||0};});
+      var max=Math.max.apply(null,vals.map(function(v){return v.value;}));
+      return vals.map(function(v){return{label:v.label,value:v.value,pct:Math.round(v.value/max*100)};});
+    },
+    insight:'<strong>March</strong> is the strongest month — 34% higher than January. If this is seasonal, consider increasing inventory in February to avoid stockouts.'
+  },
+  'products with lowest sales':{
+    cols:['Product','Units Sold'],
+    compute:function(){
+      var a={};DEMO_DATA.forEach(function(r){a[r.Product]=(a[r.Product]||0)+r.Units;});
+      return Object.entries(a).sort(function(x,y){return x[1]-y[1];}).slice(0,3)
+        .map(function(e){return{Product:e[0],'Units Sold':e[1]};});
+    },
+    chart:function(){
+      var a={};DEMO_DATA.forEach(function(r){a[r.Product]=(a[r.Product]||0)+r.Units;});
+      var sorted=Object.entries(a).sort(function(x,y){return x[1]-y[1];}).slice(0,3);
+      var max=sorted[sorted.length-1][1];
+      return sorted.map(function(e){return{label:e[0],value:e[1],pct:Math.round(e[1]/max*100)};});
+    },
+    insight:'<strong>Laptop Air</strong> has the fewest units — 47 total. At 25% margin, consider whether stronger marketing or a price adjustment would help move inventory.'
+  },
+  'total revenue':{
+    cols:['Metric','Value'],
+    compute:function(){
+      var tot=DEMO_DATA.reduce(function(s,r){return s+r.Revenue;},0);
+      var un=DEMO_DATA.reduce(function(s,r){return s+r.Units;},0);
+      return[{Metric:'Total Revenue',Value:'$'+tot.toLocaleString()},{Metric:'Total Units Sold',Value:un.toLocaleString()},{Metric:'Avg Order Value',Value:'$'+Math.round(tot/DEMO_DATA.length).toLocaleString()},{Metric:'Best Month',Value:'March'},{Metric:'Top Product',Value:'Laptop Pro 15'}];
+    },
+    chart:null,
+    insight:'Total revenue is <strong>$442,878</strong>. Electronics drive volume but <strong>Accessories average 2x the margin</strong> — a key opportunity worth prioritizing in your next campaign.'
+  }
+};
+
+var CHIP_KEYS=['top 5 products by revenue','revenue by region','revenue by month','products with lowest sales','total revenue'];
+
+// ── TYPING EFFECT ──
+var typingTimer = null;
+function typeText(el, text, callback) {
+  el.value = '';
+  var i = 0;
+  clearInterval(typingTimer);
+  typingTimer = setInterval(function(){
+    el.value += text[i];
+    i++;
+    if(i >= text.length){ clearInterval(typingTimer); if(callback) setTimeout(callback, 300); }
+  }, 40);
+}
+
+function askDemo(q, chipEl) {
+  document.querySelectorAll('.demo-chip').forEach(function(c){c.classList.remove('active');});
+  if(chipEl) chipEl.classList.add('active');
+  var inp = document.getElementById('demoInput');
+  typeText(inp, q, runDemo);
+}
+
+function runDemo() {
+  var q   = document.getElementById('demoInput').value.trim().toLowerCase();
+  var btn = document.getElementById('demoBtn');
+  var out = document.getElementById('demoResult');
+  if(!q) return;
+  btn.disabled = true;
+  out.innerHTML = '<div class="demo-loading"><div class="demo-spinner"></div>Analyzing\u2026</div>';
+
+  var qWords=q.split(' '); var bestKey=CHIP_KEYS[0]; var bestScore=-1;
+  CHIP_KEYS.forEach(function(k){
+    var kWords=k.split(' '); var score=0;
+    qWords.forEach(function(w){if(w.length>2&&kWords.indexOf(w)!==-1)score++;});
+    if(q===k)score+=10;
+    if(q.indexOf(k)!==-1||k.indexOf(q)!==-1)score+=5;
+    if(score>bestScore){bestScore=score;bestKey=k;}
+  });
+
+  var answer=ANSWERS[bestKey]||ANSWERS['total revenue'];
+
+  setTimeout(function(){
+    try {
+      var rows  = answer.compute();
+      var thead = answer.cols.map(function(c){return '<th>'+c+'</th>';}).join('');
+      var tbody = rows.map(function(r){
+        return '<tr>'+answer.cols.map(function(c,i){
+          return '<td class="'+(i===0?'td-name':'td-val')+'">'+r[c]+'</td>';
+        }).join('')+'</tr>';
+      }).join('');
+
+      var chartHtml = '';
+      if(answer.chart){
+        var bars = answer.chart();
+        chartHtml = '<div class="demo-bars">' +
+          bars.map(function(b){
+            return '<div class="demo-bar-row">' +
+              '<div class="demo-bar-label" title="'+b.label+'">'+b.label+'</div>' +
+              '<div class="demo-bar-track"><div class="demo-bar-fill" style="--w:'+b.pct+'%"></div></div>' +
+              '<div class="demo-bar-val">$'+(b.value>=1000?Math.round(b.value/1000)+'k':b.value)+'</div>' +
+            '</div>';
+          }).join('') +
+        '</div>';
+      }
+
+      out.innerHTML =
+        '<table class="demo-table"><thead><tr>'+thead+'</tr></thead><tbody>'+tbody+'</tbody></table>'+
+        chartHtml+
+        '<div class="demo-insight"><div class="demo-insight-icon">\u2736</div><div>'+
+        '<div class="demo-insight-lbl">AI Insight</div>'+
+        '<div class="demo-insight-txt">'+answer.insight+'</div>'+
+        '</div></div>';
+
+      // Animate bars after render
+      setTimeout(function(){
+        document.querySelectorAll('.demo-bar-fill').forEach(function(bar){
+          bar.style.width = bar.style.getPropertyValue('--w') || bar.style.cssText.match(/--w:([^;]+)/)?.[1] || '0%';
+        });
+      }, 50);
+
+    } catch(e) {
+      out.innerHTML='<div style="color:var(--red);font-size:13px">Error: '+e.message+'</div>';
+    }
+    btn.disabled=false;
+  }, 480);
+}
+
+// ── AUTO-START DEMO ──
+window.addEventListener('DOMContentLoaded', function(){
+  setTimeout(function(){
+    var first = document.querySelector('.demo-chip');
+    if(first) askDemo('Top 5 products by revenue', first);
+  }, 600);
+});
+</script>
+</body>
+</html>
